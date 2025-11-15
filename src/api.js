@@ -8,9 +8,7 @@ if (typeof window !== 'undefined' && window.console && window.console.debug) {
   console.debug('[admin.api] API base:', API_BASE);
 }
 
-let adminToken = localStorage.getItem('adminToken') || null;
 export function setToken(token) {
-  adminToken = token;
   if (token) {
     localStorage.setItem('adminToken', token);
     instance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -49,4 +47,5 @@ export async function del(path) {
   return wrap(instance.delete(path));
 }
 
-export default { setToken, post, get, put, del, instance };
+const apiHelpers = { setToken, post, get, put, del, instance };
+export default apiHelpers;
