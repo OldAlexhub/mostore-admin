@@ -1,3 +1,56 @@
+# M&O Store — Admin (Control Panel)
+
+This is the React-based Admin SPA for M&O Store. It manages products, promotions, users and orders and integrates with the server API.
+
+Quick start (development)
+
+1. Install dependencies and run the dev server:
+
+```bash
+cd "c:/Users/moham/Desktop/MO Store/admin"
+npm install
+npm start
+```
+
+2. The dev server runs on `http://localhost:3002` (or the default CRA port if occupied). The admin `api.js` helper uses `process.env.REACT_APP_API_BASE` to set the API base path (defaults to `/api`).
+
+Environment variables
+
+- `REACT_APP_API_BASE` — Base path for API requests (default: `/api`). For example set `REACT_APP_API_BASE=https://api.yourdomain.com/api` if your API is hosted elsewhere.
+
+Build & Docker
+
+The repo includes a `Dockerfile` that builds the admin app and serves it with nginx. The image accepts a build-arg `REACT_APP_API_BASE` to bake the API base URL into the static bundle.
+
+Build and run the image:
+
+```bash
+cd "c:/Users/moham/Desktop/MO Store/admin"
+docker build -t mo-store-admin --build-arg REACT_APP_API_BASE="https://api.yourdomain.com/api" .
+docker run -p 8081:80 mo-store-admin
+```
+
+Open `http://localhost:8081` to access the admin panel.
+
+CSRF / Auth notes
+
+- Admin uses cookie-based auth and a CSRF double-submit approach. The admin `api.js` helper will call `/auth/csrf` automatically before mutating requests and attach `X-CSRF-Token` from the `csrf` cookie.
+
+Deployment notes
+
+- If serving admin and API from different origins, ensure the API `CLIENT_ORIGIN` allows the admin origin and cookies are configured (`SameSite`/`secure`) appropriately.
+- For CI/CD, build the admin Docker image with `REACT_APP_API_BASE` set to your API URL so the static bundle points to the correct API.
+
+Useful scripts
+
+- Start dev server: `npm start`
+- Build: `npm run build` (the Dockerfile runs this during image build)
+
+If you want, I can:
+- Add a simple GitHub Actions workflow that builds the admin Docker image and optionally pushes to a registry.
+- Add health-check endpoints or an admin-only static build served by the server.
+
+Last updated: 2025-11-15
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
