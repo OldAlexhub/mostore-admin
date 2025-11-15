@@ -34,7 +34,7 @@ Open `http://localhost:8081` to access the admin panel.
 
 CSRF / Auth notes
 
-- Admin uses cookie-based auth and a CSRF double-submit approach. The admin `api.js` helper will call `/auth/csrf` automatically before mutating requests and attach `X-CSRF-Token` from the `csrf` cookie.
+-- Admin uses cookie-based auth. The admin `api.js` helper sends credentials with requests but no longer requests or attaches a separate CSRF token header.
 
 Deployment notes
 

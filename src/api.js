@@ -20,22 +20,7 @@ export function setToken(token) {
   }
 }
 
-async function ensureCsrf() {
-  if (typeof document === 'undefined') return;
-  if (document.cookie && document.cookie.split(';').some(c => c.trim().startsWith('csrf='))) return;
-  try {
-    await instance.get('/auth/csrf');
-  } catch (err) {
-    // ignore
-  }
-}
-
-function getCsrfFromCookie() {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.split(';').map(s => s.trim()).find(s => s.startsWith('csrf='));
-  if (!match) return null;
-  return decodeURIComponent(match.split('=')[1] || '');
-}
+// CSRF double-submit removed; admin API will send credentials but does not request or attach a separate CSRF token.
 
 async function wrap(promise) {
   try {
@@ -49,10 +34,7 @@ async function wrap(promise) {
 }
 
 export async function post(path, body) {
-  await ensureCsrf();
-  const csrf = getCsrfFromCookie();
-  const headers = csrf ? { 'X-CSRF-Token': csrf } : {};
-  return wrap(instance.post(path, body, { headers }));
+  return wrap(instance.post(path, body));
 }
 
 export async function get(path) {
@@ -60,17 +42,11 @@ export async function get(path) {
 }
 
 export async function put(path, body) {
-  await ensureCsrf();
-  const csrf = getCsrfFromCookie();
-  const headers = csrf ? { 'X-CSRF-Token': csrf } : {};
-  return wrap(instance.put(path, body, { headers }));
+  return wrap(instance.put(path, body));
 }
 
 export async function del(path) {
-  await ensureCsrf();
-  const csrf = getCsrfFromCookie();
-  const headers = csrf ? { 'X-CSRF-Token': csrf } : {};
-  return wrap(instance.delete(path, { headers }));
+  return wrap(instance.delete(path));
 }
 
 export default { setToken, post, get, put, del, instance };
