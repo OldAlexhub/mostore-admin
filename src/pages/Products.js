@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
 
-const emptyModel = () => ({ Name:'', Sell:0, Category:'', Subcategory:'', Material:'', Season:'', Style:'', QTY:0, imageUrl:'', Description:'' });
+const emptyModel = () => ({ Name:'', Sell:0, cost:0, Category:'', Subcategory:'', Material:'', Season:'', Style:'', QTY:0, minQty:0, imageUrl:'', Description:'' });
 
 const Products = () => {
   const [list, setList] = useState([]);
@@ -44,7 +44,7 @@ const Products = () => {
   const save = async () => {
     // basic validation
     if (!model.Name) return (toast('Name is required', { type: 'error' }), null);
-    const payload = { ...model, Sell: Number(model.Sell), QTY: Number(model.QTY) };
+    const payload = { ...model, Sell: Number(model.Sell), QTY: Number(model.QTY), cost: Number(model.cost || 0), minQty: Number(model.minQty || 0) };
     if (editing) {
       const res = await api.put(`/products/${editing}`, payload);
       if (res.ok) { setEditing(null); setModel(emptyModel()); load(page); }
@@ -56,7 +56,23 @@ const Products = () => {
     else toast(res.error || 'Failed to create', { type: 'error' });
   };
 
-  const edit = (p) => { setEditing(p._id); setModel({ Name:p.Name||'', Sell:p.Sell||0, Category:p.Category||'', Subcategory:p.Subcategory||'', Material:p.Material||'', Season:p.Season||'', Style:p.Style||'', QTY:p.QTY||0, imageUrl:p.imageUrl||'', Description:p.Description||'' }); };
+  const edit = (p) => {
+    setEditing(p._id);
+    setModel({
+      Name: p.Name || '',
+      Sell: p.Sell || 0,
+      cost: p.cost || 0,
+      minQty: p.minQty || 0,
+      Category: p.Category || '',
+      Subcategory: p.Subcategory || '',
+      Material: p.Material || '',
+      Season: p.Season || '',
+      Style: p.Style || '',
+      QTY: p.QTY || 0,
+      imageUrl: p.imageUrl || '',
+      Description: p.Description || ''
+    });
+  };
   const remove = async (id) => { if (!window.confirm('Delete product?')) return; const res = await api.del(`/products/${id}`); if (res.ok) { load(page); toast('Product deleted', { type: 'success' }); } else toast(res.error || 'Delete failed', { type: 'error' }); };
 
   const prevPage = () => { if (page <= 1) return; const np = page - 1; setPage(np); load(np); };
@@ -77,12 +93,14 @@ const Products = () => {
             <h5 className="mb-3">{editing ? 'Edit Product' : 'Create Product'}</h5>
             <div className="mb-2"><label className="form-label">Name</label><input className="form-control" value={model.Name} onChange={e=>setModel(m=>({...m, Name:e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Price (Sell)</label><input className="form-control" type="number" value={model.Sell} onChange={e=>setModel(m=>({...m, Sell: e.target.value}))} /></div>
+            <div className="mb-2"><label className="form-label">Cost (purchase price)</label><input className="form-control" type="number" value={model.cost} onChange={e=>setModel(m=>({...m, cost: e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Category</label><input className="form-control" value={model.Category} onChange={e=>setModel(m=>({...m, Category:e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Subcategory</label><input className="form-control" value={model.Subcategory} onChange={e=>setModel(m=>({...m, Subcategory:e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Material</label><input className="form-control" value={model.Material} onChange={e=>setModel(m=>({...m, Material:e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Season</label><input className="form-control" value={model.Season} onChange={e=>setModel(m=>({...m, Season:e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Style</label><input className="form-control" value={model.Style} onChange={e=>setModel(m=>({...m, Style:e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Quantity (QTY)</label><input className="form-control" type="number" value={model.QTY} onChange={e=>setModel(m=>({...m, QTY: e.target.value}))} /></div>
+            <div className="mb-2"><label className="form-label">Min stock (minQty)</label><input className="form-control" type="number" value={model.minQty} onChange={e=>setModel(m=>({...m, minQty: e.target.value}))} /></div>
             <div className="mb-2"><label className="form-label">Image URL</label><input className="form-control" value={model.imageUrl} onChange={e=>setModel(m=>({...m, imageUrl:e.target.value}))} /></div>
             {model.imageUrl && <div className="mb-2"><img src={model.imageUrl} alt="preview" style={{maxWidth:'100%', maxHeight:160, objectFit:'contain', border:'1px solid #eee'}} /></div>}
             <div className="mb-2"><label className="form-label">Description</label><textarea className="form-control" rows={3} value={model.Description} onChange={e=>setModel(m=>({...m, Description:e.target.value}))} /></div>
@@ -107,6 +125,7 @@ const Products = () => {
                   </div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:700}}>{p.Name} <span className="text-muted" style={{fontWeight:400}}>— ج.م {p.Sell}</span></div>
+                    <div style={{fontSize:12, color:'#666'}}>Cost: ج.م {p.cost ?? 0}</div>
                     <div style={{fontSize:13, color:'#666'}}>{p.Category}{p.Subcategory ? ` › ${p.Subcategory}` : ''} {p.Material ? ` • ${p.Material}` : ''}</div>
                     <div style={{marginTop:6, fontSize:13}}>{p.Description}</div>
                     <div className="mt-2 d-flex gap-2">

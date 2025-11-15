@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react';
 import api from './api';
 import AdminLayout from './components/AdminLayout';
 import { ToasterProvider } from './components/Toaster';
+import Accounting from './pages/Accounting';
+import Admins from './pages/Admins';
 import Announcements from './pages/Announcements';
 import Dashboard from './pages/Dashboard';
+import InventoryInsights from './pages/InventoryInsights';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import Promotions from './pages/Promotions';
+import Reports from './pages/Reports';
 import Users from './pages/Users';
 
 function App() {
@@ -78,6 +82,10 @@ function App() {
         {page === 'products' && <Products setPage={setPage} admin={admin} />}
         {page === 'orders' && <Orders setPage={setPage} admin={admin} />}
         {page === 'promotions' && <Promotions setPage={setPage} admin={admin} />}
+        {page === 'reports' && <Reports setPage={setPage} admin={admin} />}
+        {page === 'accounting' && <Accounting setPage={setPage} admin={admin} />}
+        {page === 'admins' && <Admins setPage={setPage} admin={admin} />}
+        {page === 'inventory' && <InventoryInsights setPage={setPage} admin={admin} />}
         {page === 'users' && <Users setPage={setPage} admin={admin} />}
       </AdminLayout>
     </ToasterProvider>
