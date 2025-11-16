@@ -32,7 +32,7 @@ export const ToasterProvider = ({ children }) => {
           <div key={t.id} style={{minWidth:220, marginBottom:8, padding:10, borderRadius:6, boxShadow:'0 2px 8px rgba(0,0,0,0.12)', background: t.type==='error' ? '#ffe6e6' : (t.type==='success' ? '#e6ffef' : '#ffffff'), border: t.type==='error' ? '1px solid #ffb3b3' : '1px solid #e6f3ea'}}>
             <div style={{fontSize:13, color: t.type==='error' ? '#8b0000' : '#0a5f32'}}>{t.message}</div>
             <div style={{marginTop:6, textAlign:'right'}}>
-              <button onClick={() => remove(t.id)} className="btn btn-sm btn-link" style={{padding:0}}>Dismiss</button>
+              <button onClick={() => remove(t.id)} className="btn btn-sm btn-link" style={{padding:0}}>إغلاق</button>
             </div>
           </div>
         ))}
@@ -43,7 +43,7 @@ export const ToasterProvider = ({ children }) => {
 
 export const useToast = () => {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToasterProvider');
+  if (!ctx) throw new Error('useToast لازم يكون جوا ToasterProvider');
   return ctx.push;
 };
 

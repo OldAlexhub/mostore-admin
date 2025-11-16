@@ -10,7 +10,7 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setErr(null);
     const res = await api.post('/admins/login', { username, password });
-    if (!res.ok) return setErr(res.data?.error || 'Login failed');
+    if (!res.ok) return setErr(res.data?.error || 'فشل تسجيل الدخول');
     api.setToken(res.data.token);
     const adm = res.data.admin || null;
     try { if (adm) localStorage.setItem('adminUser', JSON.stringify(adm)); } catch (e) {}
@@ -18,21 +18,20 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div style={{maxWidth:420, margin:'40px auto', padding:16, border:'1px solid #eee', borderRadius:8}}>
-      <h3>Admin Login</h3>
-      {err && <div style={{color:'#c00', marginBottom:8}}>{err}</div>}
+    <div style={{ maxWidth: 420, margin: '40px auto', padding: 16, border: '1px solid #eee', borderRadius: 8 }} dir="rtl">
+      <h3 className="mb-2">تسجيل دخول الإدارة</h3>
+      <p className="text-muted" style={{ fontSize: 14 }}>ادخل بيانات حساب المشرف للدخول إلى لوحة التحكم.</p>
+      {err && <div style={{ color: '#c00', marginBottom: 8 }}>{err}</div>}
       <form onSubmit={submit}>
-        <div style={{marginBottom:8}}>
-          <label>Username</label>
-          <input value={username} onChange={e=>setUsername(e.target.value)} className="form-control" />
+        <div className="mb-2">
+          <label className="form-label">اسم المستخدم</label>
+          <input value={username} onChange={e => setUsername(e.target.value)} className="form-control" placeholder="مثال: admin" />
         </div>
-        <div style={{marginBottom:12}}>
-          <label>Password</label>
-          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" className="form-control" />
+        <div className="mb-3">
+          <label className="form-label">كلمة السر</label>
+          <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="form-control" placeholder="••••••••" />
         </div>
-        <div style={{display:'flex', gap:8}}>
-          <button className="btn btn-primary">Login</button>
-        </div>
+        <button className="btn btn-primary w-100">دخول</button>
       </form>
     </div>
   );

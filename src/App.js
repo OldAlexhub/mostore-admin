@@ -13,6 +13,7 @@ import Products from './pages/Products';
 import Promotions from './pages/Promotions';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
+import StoreDiscount from './pages/StoreDiscount';
 
 function App() {
   const [page, setPage] = useState('dashboard');
@@ -87,6 +88,7 @@ function App() {
         {page === 'admins' && <Admins setPage={setPage} admin={admin} />}
         {page === 'inventory' && <InventoryInsights setPage={setPage} admin={admin} />}
         {page === 'users' && <Users setPage={setPage} admin={admin} />}
+        {page === 'storeDiscount' && <StoreDiscount setPage={setPage} admin={admin} />}
       </AdminLayout>
     </ToasterProvider>
   );

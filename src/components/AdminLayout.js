@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import api from '../api';
 import './AdminLayout.css';
 import { useToast } from './Toaster';
@@ -15,14 +15,14 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
   const intervalRef = useRef(null);
   const toast = useToast();
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const res = await api.get('/orders/summary');
       if (res.ok && res.data && res.data.counts) {
         const c = res.data.counts.new || 0;
         // notify when increased
         if (prevRef.current && c > prevRef.current) {
-          toast(`New orders: ${c - prevRef.current}`, { type: 'info' });
+          toast(`طلبات جديدة: ${c - prevRef.current}`, { type: 'info' });
         }
         prevRef.current = c;
         setNewCount(c);
@@ -30,13 +30,13 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
     } catch (err) {
       // ignore
     }
-  };
+  }, [toast]);
 
   useEffect(()=>{
     fetchSummary();
     intervalRef.current = setInterval(fetchSummary, 30000);
     return ()=> clearInterval(intervalRef.current);
-  }, []);
+  }, [fetchSummary]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState(null); // 'primary' | 'marketing' | 'ops' | null
@@ -89,9 +89,9 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
   );
 
   return (
-    <div className="admin-root">
+    <div className="admin-root" dir="rtl">
       <header className="admin-header">
-        <div className="brand">M&O Store — Admin</div>
+        <div className="brand">لوحة تحكم M&O</div>
         <div className="header-right" ref={containerRef}>
           <div className="admin-info">{admin?.username || ''} <span className="admin-role">({admin?.role || ''})</span></div>
 
@@ -108,13 +108,13 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
                 aria-controls="dropdown-primary"
                 onClick={() => setOpenGroup(openGroup === 'primary' ? null : 'primary')}
               >
-                <span className="group-title">Primary</span>
+                <span className="group-title">الإدارة اليومية</span>
                 <IconChevron open={openGroup === 'primary'} />
               </button>
               <div id="dropdown-primary" role="menu" className={`dropdown ${openGroup === 'primary' ? 'open' : ''}`}>
-                <button role="menuitem" onClick={() => { setPage('dashboard'); setOpenGroup(null); }} style={page==='dashboard' ? activeBtn : btn}>Dashboard</button>
-                <button role="menuitem" onClick={() => { setPage('orders'); setOpenGroup(null); }} style={page==='orders' ? activeBtn : btn}> <IconOrder /> Orders {newCount>0 && <span className="badge">{newCount}</span>}</button>
-                <button role="menuitem" onClick={() => { setPage('products'); setOpenGroup(null); }} style={page==='products' ? activeBtn : btn}>Products</button>
+                <button role="menuitem" onClick={() => { setPage('dashboard'); setOpenGroup(null); }} style={page==='dashboard' ? activeBtn : btn}>لوحة المتابعة</button>
+                <button role="menuitem" onClick={() => { setPage('orders'); setOpenGroup(null); }} style={page==='orders' ? activeBtn : btn}> <IconOrder /> الطلبات {newCount>0 && <span className="badge">{newCount}</span>}</button>
+                <button role="menuitem" onClick={() => { setPage('products'); setOpenGroup(null); }} style={page==='products' ? activeBtn : btn}>المنتجات</button>
               </div>
             </div>
 
@@ -126,13 +126,14 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
                 aria-controls="dropdown-marketing"
                 onClick={() => setOpenGroup(openGroup === 'marketing' ? null : 'marketing')}
               >
-                <span className="group-title">Marketing</span>
+                <span className="group-title">التسويق</span>
                 <IconChevron open={openGroup === 'marketing'} />
               </button>
               <div id="dropdown-marketing" role="menu" className={`dropdown ${openGroup === 'marketing' ? 'open' : ''}`}>
-                <button role="menuitem" onClick={() => { setPage('promotions'); setOpenGroup(null); }} style={page==='promotions' ? activeBtn : btn}>Promotions</button>
-                <button role="menuitem" onClick={() => { setPage('announcements'); setOpenGroup(null); }} style={page==='announcements' ? activeBtn : btn}>Announcements</button>
-                <button role="menuitem" onClick={() => { setPage('reports'); setOpenGroup(null); }} style={page==='reports' ? activeBtn : btn}>Reports</button>
+                <button role="menuitem" onClick={() => { setPage('promotions'); setOpenGroup(null); }} style={page==='promotions' ? activeBtn : btn}>العروض</button>
+                <button role="menuitem" onClick={() => { setPage('announcements'); setOpenGroup(null); }} style={page==='announcements' ? activeBtn : btn}>الإعلانات</button>
+                <button role="menuitem" onClick={() => { setPage('storeDiscount'); setOpenGroup(null); }} style={page==='storeDiscount' ? activeBtn : btn}>خصم المتجر</button>
+                <button role="menuitem" onClick={() => { setPage('reports'); setOpenGroup(null); }} style={page==='reports' ? activeBtn : btn}>التقارير</button>
               </div>
             </div>
 
@@ -144,58 +145,57 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
                 aria-controls="dropdown-ops"
                 onClick={() => setOpenGroup(openGroup === 'ops' ? null : 'ops')}
               >
-                <span className="group-title">Operations</span>
+                <span className="group-title">التشغيل</span>
                 <IconChevron open={openGroup === 'ops'} />
               </button>
               <div id="dropdown-ops" role="menu" className={`dropdown ${openGroup === 'ops' ? 'open' : ''}`}>
-                <button role="menuitem" onClick={() => { setPage('inventory'); setOpenGroup(null); }} style={page==='inventory' ? activeBtn : btn}>Stock</button>
+                <button role="menuitem" onClick={() => { setPage('inventory'); setOpenGroup(null); }} style={page==='inventory' ? activeBtn : btn}>المخزون</button>
                 {(admin && (admin.role === 'manager' || admin.role === 'superadmin')) && (
-                  <button role="menuitem" onClick={() => { setPage('accounting'); setOpenGroup(null); }} style={page==='accounting' ? activeBtn : btn}>Accounting</button>
+                  <button role="menuitem" onClick={() => { setPage('accounting'); setOpenGroup(null); }} style={page==='accounting' ? activeBtn : btn}>الحسابات</button>
                 )}
                 {admin && (admin.role === 'manager' || admin.role === 'superadmin') && (
-                  <button role="menuitem" onClick={() => { setPage('users'); setOpenGroup(null); }} style={page==='users' ? activeBtn : btn}>Users</button>
+                  <button role="menuitem" onClick={() => { setPage('users'); setOpenGroup(null); }} style={page==='users' ? activeBtn : btn}>العملاء</button>
                 )}
                 {(admin && admin.role === 'superadmin') && (
-                  <button role="menuitem" onClick={() => { setPage('admins'); setOpenGroup(null); }} style={page==='admins' ? activeBtn : btn}>Admins</button>
+                  <button role="menuitem" onClick={() => { setPage('admins'); setOpenGroup(null); }} style={page==='admins' ? activeBtn : btn}>المشرفين</button>
                 )}
               </div>
             </div>
           </div>
 
           <div className="logout-wrap">
-            <button onClick={onLogout} className="logout-btn">Logout</button>
+            <button onClick={onLogout} className="logout-btn">تسجيل خروج</button>
           </div>
         </div>
       </header>
 
       <div className={`mobile-menu ${mobileOpen ? 'open' : ''}`}>
         <div className="mobile-section">
-          <div className="mobile-section-title">Primary</div>
-          <button onClick={() => { setPage('dashboard'); setMobileOpen(false); }}>Dashboard</button>
-          <button onClick={() => { setPage('orders'); setMobileOpen(false); }}>Orders {newCount>0 && <span className="badge">{newCount}</span>}</button>
-          <button onClick={() => { setPage('products'); setMobileOpen(false); }}>Products</button>
+          <div className="mobile-section-title">الإدارة اليومية</div>
+          <button onClick={() => { setPage('dashboard'); setMobileOpen(false); }}>لوحة المتابعة</button>
+          <button onClick={() => { setPage('orders'); setMobileOpen(false); }}>الطلبات {newCount>0 && <span className="badge">{newCount}</span>}</button>
+          <button onClick={() => { setPage('products'); setMobileOpen(false); }}>المنتجات</button>
         </div>
         <div className="mobile-section">
-          <div className="mobile-section-title">Marketing</div>
-          <button onClick={() => { setPage('promotions'); setMobileOpen(false); }}>Promotions</button>
-          <button onClick={() => { setPage('announcements'); setMobileOpen(false); }}>Announcements</button>
-          <button onClick={() => { setPage('reports'); setMobileOpen(false); }}>Reports</button>
+          <div className="mobile-section-title">التسويق</div>
+          <button onClick={() => { setPage('promotions'); setMobileOpen(false); }}>العروض</button>
+          <button onClick={() => { setPage('announcements'); setMobileOpen(false); }}>الإعلانات</button>
+          <button onClick={() => { setPage('storeDiscount'); setMobileOpen(false); }}>خصم المتجر</button>
+          <button onClick={() => { setPage('reports'); setMobileOpen(false); }}>التقارير</button>
         </div>
         <div className="mobile-section">
-          <div className="mobile-section-title">Operations</div>
-          <button onClick={() => { setPage('inventory'); setMobileOpen(false); }}>Stock</button>
+          <div className="mobile-section-title">التشغيل</div>
+          <button onClick={() => { setPage('inventory'); setMobileOpen(false); }}>المخزون</button>
           {(admin && (admin.role === 'manager' || admin.role === 'superadmin')) && (
-            <button onClick={() => { setPage('accounting'); setMobileOpen(false); }}>Accounting</button>
+            <button onClick={() => { setPage('accounting'); setMobileOpen(false); }}>الحسابات</button>
           )}
-          {admin && (admin.role === 'manager' || admin.role === 'superadmin') && (
-            <button onClick={() => { setPage('users'); setMobileOpen(false); }}>Users</button>
-          )}
+          <button onClick={() => { setPage('users'); setMobileOpen(false); }}>العملاء</button>
           {(admin && admin.role === 'superadmin') && (
-            <button onClick={() => { setPage('admins'); setMobileOpen(false); }}>Admins</button>
+            <button onClick={() => { setPage('admins'); setMobileOpen(false); }}>المشرفين</button>
           )}
         </div>
         <div className="mobile-section">
-          <button onClick={() => { onLogout(); setMobileOpen(false); }} className="logout-mobile">Logout</button>
+          <button onClick={() => { onLogout(); setMobileOpen(false); }} className="logout-mobile">تسجيل خروج</button>
         </div>
       </div>
 
