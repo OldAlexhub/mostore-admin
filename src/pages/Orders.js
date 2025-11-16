@@ -238,6 +238,8 @@ const Orders = () => {
     const res = await api.get(`/orders?${qs}`);
     if (res.ok) {
       const items = Array.isArray(res.data) ? res.data : (res.data?.orders || []);
+      // update list
+
       setList(items);
       setTotal(res.data?.total ?? items.length);
       setPage(pageValue);

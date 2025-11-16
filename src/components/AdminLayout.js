@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import api from '../api';
+import newOrderSound from '../media/neworder.mp3';
 import './AdminLayout.css';
 import { useToast } from './Toaster';
 
@@ -14,6 +15,10 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
   const prevRef = useRef(0);
   const intervalRef = useRef(null);
   const toast = useToast();
+  const audioRef = useRef(null);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem('adminSoundEnabled') !== 'false'; } catch { return true; }
+  });
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -22,7 +27,21 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
         const c = res.data.counts.new || 0;
         // notify when increased
         if (prevRef.current && c > prevRef.current) {
-          toast(`طلبات جديدة: ${c - prevRef.current}`, { type: 'info' });
+          const delta = c - prevRef.current;
+          toast(`طلبات جديدة: ${delta}`, { type: 'info' });
+          // play sound if enabled
+          try {
+            if (soundEnabled) {
+              if (!audioRef.current) {
+                audioRef.current = new Audio(newOrderSound);
+                audioRef.current.volume = 0.65;
+              }
+              // try to play, ignore errors (autoplay may be blocked)
+              audioRef.current.play().catch(() => {});
+            }
+          } catch (e) {
+            // ignore audio errors
+          }
         }
         prevRef.current = c;
         setNewCount(c);
@@ -30,7 +49,25 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
     } catch (err) {
       // ignore
     }
-  }, [toast]);
+  }, [toast, soundEnabled]);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    try { localStorage.setItem('adminSoundEnabled', next ? 'true' : 'false'); } catch {}
+    setSoundEnabled(next);
+    if (next) {
+      try {
+        if (!audioRef.current) audioRef.current = new Audio(newOrderSound);
+        audioRef.current.volume = 0.65;
+        // play once to attempt granting autoplay permission on user gesture
+        audioRef.current.play().catch(() => {
+          toast('لتفعيل الأصوات: اضغط على أي مكان في الصفحة أو اضغط الزر مرة أخرى', { type: 'warning' });
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
 
   useEffect(()=>{
     fetchSummary();
@@ -163,8 +200,15 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
             </div>
           </div>
 
-          <div className="logout-wrap">
-            <button onClick={onLogout} className="logout-btn">تسجيل خروج</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div>
+              <button onClick={toggleSound} title="تفعيل/تعطيل إشعارات الصوت" style={soundEnabled ? activeBtn : btn}>
+                {soundEnabled ? '🔔' : '🔕'}
+              </button>
+            </div>
+            <div className="logout-wrap">
+              <button onClick={onLogout} className="logout-btn">تسجيل خروج</button>
+            </div>
           </div>
         </div>
       </header>
