@@ -12,7 +12,7 @@ const activeBtn = { background: '#6a3cb8', color:'#fff', border: '1px solid #5a2
 
 const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
   const [newCount, setNewCount] = useState(0);
-  const prevRef = useRef(0);
+  const prevCountRef = useRef(null);
   const intervalRef = useRef(null);
   const toast = useToast();
   const audioRef = useRef(null);
@@ -33,9 +33,10 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
       const res = await api.get('/orders/summary');
       if (res.ok && res.data && res.data.counts) {
         const c = res.data.counts.new || 0;
+        const prevCount = typeof prevCountRef.current === 'number' ? prevCountRef.current : null;
         // notify when increased
-        if (prevRef.current && c > prevRef.current) {
-          const delta = c - prevRef.current;
+        if (prevCount !== null && c > prevCount) {
+          const delta = c - prevCount;
           toast(`طلبات جديدة: ${delta}`, { type: 'info' });
           // play sound if enabled
           try {
@@ -43,6 +44,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
               const audio = ensureAudio();
               if (audio && audioPrimedRef.current) {
                 // try to play, ignore errors (autoplay may be blocked)
+                audio.currentTime = 0;
                 audio.play().catch(() => {});
               }
             }
@@ -50,7 +52,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
             // ignore audio errors
           }
         }
-        prevRef.current = c;
+        prevCountRef.current = c;
         setNewCount(c);
       }
     } catch (err) {
