@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
+import { downloadCsvFromBlob } from '../utils/csv';
 
 const Accounting = () => {
   const [expenses, setExpenses] = useState([]);
@@ -67,13 +68,11 @@ const Accounting = () => {
       if (range.group) qs.push(`group=${encodeURIComponent(range.group)}`);
       const url = `/accounting/pl.csv${qs.length ? `?${qs.join('&')}` : ''}`;
       const res = await api.instance.get(url, { responseType: 'blob' });
-      const blob = res.data;
-      const dlUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = dlUrl;
-      a.download = `pl-${Date.now()}.csv`;
-      a.click();
-      URL.revokeObjectURL(dlUrl);
+      if (res && res.data) {
+        await downloadCsvFromBlob(res.data, `pl-${Date.now()}.csv`);
+      } else {
+        toast('تعذر تصدير الملف', { type: 'error' });
+      }
     } catch {
       toast('تعذر تصدير الملف', { type: 'error' });
     }

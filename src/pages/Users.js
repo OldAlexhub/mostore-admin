@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
+import { downloadCsvFromBlob } from '../utils/csv';
 
 const Customers = () => {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
-
   const load = async () => {
     setLoading(true);
     const res = await api.get('/orders/customers');
@@ -14,29 +14,19 @@ const Customers = () => {
     else toast(res.error || 'تعذر تحميل العملاء', { type: 'error' });
     setLoading(false);
   };
-
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const download = async () => {
     try {
       const res = await api.instance.get('/orders/customers.csv', { responseType: 'blob' });
       if (res && res.data) {
-        const url = window.URL.createObjectURL(new Blob([res.data]));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `customers-${Date.now()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        await downloadCsvFromBlob(res.data, `customers-${Date.now()}.csv`);
       } else {
-        toast('تعذر تنزيل الملف', { type: 'error' });
+        toast('???? ????? ?????', { type: 'error' });
       }
     } catch {
-      toast('تعذر تنزيل الملف', { type: 'error' });
+      toast('???? ????? ?????', { type: 'error' });
     }
   };
-
   return (
     <div dir="rtl">
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -46,10 +36,8 @@ const Customers = () => {
         </div>
         <button className="btn btn-sm btn-outline-success" onClick={download}>تصدير CSV</button>
       </div>
-
       {loading && <div>جارٍ التحميل...</div>}
       {!loading && list.length === 0 && <div className="text-muted">لا يوجد بيانات عملاء بعد.</div>}
-
       {!loading && list.length > 0 && (
         <div style={{ overflowX: 'auto' }}>
           <table className="table table-sm">
@@ -81,5 +69,4 @@ const Customers = () => {
     </div>
   );
 };
-
 export default Customers;

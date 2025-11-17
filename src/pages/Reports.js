@@ -1,17 +1,7 @@
 import { useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
-
-const downloadBlob = (blob, filename) => {
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
-};
+import { downloadCsvFromBlob } from '../utils/csv';
 
 const Reports = () => {
   const [loading, setLoading] = useState(null);
@@ -22,7 +12,7 @@ const Reports = () => {
       setLoading(path);
       const res = await api.instance.get(path, { responseType: 'blob' });
       if (res && res.data) {
-        downloadBlob(res.data, filename);
+        await downloadCsvFromBlob(res.data, filename);
         toast('تم تنزيل الملف');
       } else {
         toast('تعذر تحميل الملف', { type: 'error' });

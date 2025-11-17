@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
+import { downloadCsvFromText } from '../utils/csv';
 
 const InventoryInsights = () => {
   const [days, setDays] = useState(30);
@@ -35,13 +36,7 @@ const InventoryInsights = () => {
       return s;
     }).join(','));
     const csv = [header.join(',')].concat(rows).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${name}-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadCsvFromText(csv, `${name}-${Date.now()}.csv`);
   };
 
   return (
