@@ -210,6 +210,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
               <div id="dropdown-primary" role="menu" className={`dropdown ${openGroup === 'primary' ? 'open' : ''}`}>
                 <button role="menuitem" onClick={() => { setPage('dashboard'); setOpenGroup(null); }} style={page==='dashboard' ? activeBtn : btn}>لوحة المتابعة</button>
                 <button role="menuitem" onClick={() => { setPage('orders'); setOpenGroup(null); }} style={page==='orders' ? activeBtn : btn}> <IconOrder /> الطلبات {newCount>0 && <span className="badge">{newCount}</span>}</button>
+                <button role="menuitem" onClick={() => { setPage('chats'); setOpenGroup(null); }} style={page==='chats' ? activeBtn : btn}>دردشة العملاء</button>
                 <button role="menuitem" onClick={() => { setPage('products'); setOpenGroup(null); }} style={page==='products' ? activeBtn : btn}>المنتجات</button>
               </div>
             </div>
@@ -277,6 +278,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
           <div className="mobile-section-title">الإدارة اليومية</div>
           <button onClick={() => { setPage('dashboard'); setMobileOpen(false); }}>لوحة المتابعة</button>
           <button onClick={() => { setPage('orders'); setMobileOpen(false); }}>الطلبات {newCount>0 && <span className="badge">{newCount}</span>}</button>
+          <button onClick={() => { setPage('chats'); setMobileOpen(false); }}>دردشة العملاء</button>
           <button onClick={() => { setPage('products'); setMobileOpen(false); }}>المنتجات</button>
         </div>
         <div className="mobile-section">

@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import InventoryInsights from './pages/InventoryInsights';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
+import Chats from './pages/Chats';
 import Products from './pages/Products';
 import Promotions from './pages/Promotions';
 import Reports from './pages/Reports';
@@ -89,6 +90,7 @@ function App() {
         {page === 'inventory' && <InventoryInsights setPage={setPage} admin={admin} />}
         {page === 'users' && <Users setPage={setPage} admin={admin} />}
         {page === 'storeDiscount' && <StoreDiscount setPage={setPage} admin={admin} />}
+        {page === 'chats' && <Chats setPage={setPage} admin={admin} />}
       </AdminLayout>
     </ToasterProvider>
   );
