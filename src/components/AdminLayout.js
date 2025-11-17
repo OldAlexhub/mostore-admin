@@ -16,9 +16,17 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
   const intervalRef = useRef(null);
   const toast = useToast();
   const audioRef = useRef(null);
+  const audioPrimedRef = useRef(false);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     try { return localStorage.getItem('adminSoundEnabled') !== 'false'; } catch { return true; }
   });
+  const ensureAudio = useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(newOrderSound);
+      audioRef.current.volume = 0.65;
+    }
+    return audioRef.current;
+  }, []);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -32,12 +40,11 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
           // play sound if enabled
           try {
             if (soundEnabled) {
-              if (!audioRef.current) {
-                audioRef.current = new Audio(newOrderSound);
-                audioRef.current.volume = 0.65;
+              const audio = ensureAudio();
+              if (audio && audioPrimedRef.current) {
+                // try to play, ignore errors (autoplay may be blocked)
+                audio.play().catch(() => {});
               }
-              // try to play, ignore errors (autoplay may be blocked)
-              audioRef.current.play().catch(() => {});
             }
           } catch (e) {
             // ignore audio errors
@@ -49,7 +56,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
     } catch (err) {
       // ignore
     }
-  }, [toast, soundEnabled]);
+  }, [toast, soundEnabled, ensureAudio]);
 
   const toggleSound = () => {
     const next = !soundEnabled;
@@ -57,10 +64,13 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
     setSoundEnabled(next);
     if (next) {
       try {
-        if (!audioRef.current) audioRef.current = new Audio(newOrderSound);
-        audioRef.current.volume = 0.65;
+        const audio = ensureAudio();
         // play once to attempt granting autoplay permission on user gesture
-        audioRef.current.play().catch(() => {
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audioPrimedRef.current = true;
+        }).catch(() => {
           toast('لتفعيل الأصوات: اضغط على أي مكان في الصفحة أو اضغط الزر مرة أخرى', { type: 'warning' });
         });
       } catch (e) {
@@ -74,6 +84,38 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
     intervalRef.current = setInterval(fetchSummary, 30000);
     return ()=> clearInterval(intervalRef.current);
   }, [fetchSummary]);
+
+  useEffect(() => {
+    if (!soundEnabled || audioPrimedRef.current) return undefined;
+    function cleanup() {
+      window.removeEventListener('pointerdown', attemptPrime);
+      window.removeEventListener('keydown', attemptPrime);
+    }
+    function attemptPrime() {
+      if (audioPrimedRef.current) {
+        cleanup();
+        return;
+      }
+      try {
+        const audio = ensureAudio();
+        audio.play()
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audioPrimedRef.current = true;
+            cleanup();
+          })
+          .catch(() => {
+            // keep listeners active so the next interaction retries
+          });
+      } catch {
+        // ignore and wait for the next user interaction
+      }
+    }
+    window.addEventListener('pointerdown', attemptPrime);
+    window.addEventListener('keydown', attemptPrime);
+    return () => cleanup();
+  }, [soundEnabled, ensureAudio]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState(null); // 'primary' | 'marketing' | 'ops' | null
@@ -251,3 +293,4 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
 };
 
 export default AdminLayout;
+
