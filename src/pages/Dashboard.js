@@ -105,13 +105,13 @@ const Dashboard = ({ setPage }) => {
     const requests = await Promise.allSettled([
       api.get('/products'),
       api.get('/orders?page=1&limit=8'),
-      api.get('/users'),
+      api.get('/orders/customers'),
       api.get('/inventory'),
       api.get('/revenue')
     ]);
 
     const unwrap = (result) => (result.status === 'fulfilled' ? result.value : { ok: false });
-    const [productsRes, ordersRes, usersRes, inventoryRes, revenueRes] = requests.map(unwrap);
+    const [productsRes, ordersRes, customersRes, inventoryRes, revenueRes] = requests.map(unwrap);
 
     if (!productsRes.ok && !ordersRes.ok) {
       setError('حصلت مشكلة أثناء تحميل البيانات، حاول لاحقاً.');
@@ -119,7 +119,9 @@ const Dashboard = ({ setPage }) => {
 
     const products = productsRes.ok ? (Array.isArray(productsRes.data) ? productsRes.data : productsRes.data?.products || []) : [];
     const orders = ordersRes.ok ? (Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data?.orders || []) : [];
-    const users = usersRes.ok ? (Array.isArray(usersRes.data) ? usersRes.data : usersRes.data?.users || []) : [];
+    const users = customersRes.ok
+      ? (Array.isArray(customersRes.data) ? customersRes.data : customersRes.data?.customers || [])
+      : [];
     const stock = inventoryRes.ok ? (Array.isArray(inventoryRes.data) ? inventoryRes.data : inventoryRes.data?.items || []) : [];
     const revenue = revenueRes.ok ? (revenueRes.data?.total ?? revenueRes.data?.revenue ?? 0) : orders.reduce((sum, o) => sum + Number(o.totalPrice || 0), 0);
 
