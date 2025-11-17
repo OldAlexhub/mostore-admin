@@ -12,6 +12,7 @@ const activeBtn = { background: '#6a3cb8', color:'#fff', border: '1px solid #5a2
 
 const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
   const [newCount, setNewCount] = useState(0);
+  const originalTitleRef = useRef(null);
   const prevCountRef = useRef(null);
   const intervalRef = useRef(null);
   const toast = useToast();
@@ -118,6 +119,20 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
     window.addEventListener('keydown', attemptPrime);
     return () => cleanup();
   }, [soundEnabled, ensureAudio]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    if (!originalTitleRef.current) {
+      originalTitleRef.current = document.title || 'MO Admin';
+    }
+    const base = originalTitleRef.current;
+    document.title = newCount > 0 ? `(${newCount}) ${base}` : base;
+    return () => {
+      if (typeof document !== 'undefined' && originalTitleRef.current) {
+        document.title = originalTitleRef.current;
+      }
+    };
+  }, [newCount]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState(null); // 'primary' | 'marketing' | 'ops' | null
