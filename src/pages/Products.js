@@ -16,7 +16,8 @@ const emptyModel = () => ({
   minQty: 0,
   imageUrl: '',
   secondaryImageUrl: '',
-  Description: ''
+  Description: '',
+  imageGalleryText: ''
 });
 
 const statusMeta = (product) => {
@@ -126,13 +127,16 @@ const Products = () => {
     if (!model.Name || !String(model.Name).trim()) return toast('اسم المنتج مطلوب', { type: 'error' });
     if (model.Sell === '' || model.Sell === null || isNaN(Number(model.Sell))) return toast('سعر البيع مطلوب', { type: 'error' });
     if (model.cost === '' || model.cost === null || isNaN(Number(model.cost))) return toast('التكلفة مطلوبة', { type: 'error' });
+    const gallery = (model.imageGalleryText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     const payload = {
       ...model,
       Sell: Number(model.Sell),
       QTY: Number(model.QTY),
       cost: Number(model.cost || 0),
-      minQty: Number(model.minQty || 0)
+      minQty: Number(model.minQty || 0),
+      imageGallery: gallery
     };
+    delete payload.imageGalleryText;
     if (model.Number && String(model.Number).trim() !== '') payload.Number = Number(model.Number);
     if (editing) {
       const res = await api.put(`/products/${editing}`, payload);
@@ -169,7 +173,8 @@ const Products = () => {
       QTY: product.QTY || 0,
       imageUrl: product.imageUrl || '',
       secondaryImageUrl: product.secondaryImageUrl || '',
-      Description: product.Description || ''
+      Description: product.Description || '',
+      imageGalleryText: (Array.isArray(product.imageGallery) ? product.imageGallery : []).join('\n')
     });
   };
 
@@ -244,6 +249,17 @@ const Products = () => {
                 <img src={model.secondaryImageUrl} alt="preview-2" style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', border: '1px solid #eee' }} />
               </div>
             )}
+            <div className="mb-2">
+              <label className="form-label">روابط صور إضافية (سطر لكل رابط)</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                value={model.imageGalleryText}
+                onChange={e => setModel(m => ({ ...m, imageGalleryText: e.target.value }))}
+                placeholder="https://ibb.co/..."
+              />
+              <small className="text-muted">يمكنك لصق روابط Imgbb (viewer) أو أي رابط صورة مباشر، كل رابط في سطر مستقل.</small>
+            </div>
             <div className="mb-2"><label className="form-label">الوصف</label><textarea className="form-control" rows={3} value={model.Description} onChange={e => setModel(m => ({ ...m, Description: e.target.value }))} /></div>
 
             <div className="d-flex gap-2">
