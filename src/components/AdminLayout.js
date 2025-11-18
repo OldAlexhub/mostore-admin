@@ -232,6 +232,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
                 <button role="menuitem" onClick={() => { setPage('announcements'); setOpenGroup(null); }} style={page==='announcements' ? activeBtn : btn}>الإعلانات</button>
                 <button role="menuitem" onClick={() => { setPage('storeDiscount'); setOpenGroup(null); }} style={page==='storeDiscount' ? activeBtn : btn}>خصم المتجر</button>
                 <button role="menuitem" onClick={() => { setPage('reports'); setOpenGroup(null); }} style={page==='reports' ? activeBtn : btn}>التقارير</button>
+                <button role="menuitem" onClick={() => { setPage('hero'); setOpenGroup(null); }} style={page==='hero' ? activeBtn : btn}>محتوى البانر</button>
               </div>
             </div>
 
@@ -288,6 +289,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
           <button onClick={() => { setPage('announcements'); setMobileOpen(false); }}>الإعلانات</button>
           <button onClick={() => { setPage('storeDiscount'); setMobileOpen(false); }}>خصم المتجر</button>
           <button onClick={() => { setPage('reports'); setMobileOpen(false); }}>التقارير</button>
+          <button onClick={() => { setPage('hero'); setMobileOpen(false); }}>محتوى البانر</button>
         </div>
         <div className="mobile-section">
           <div className="mobile-section-title">التشغيل</div>

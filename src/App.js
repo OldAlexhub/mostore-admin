@@ -14,6 +14,7 @@ import Promotions from './pages/Promotions';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import StoreDiscount from './pages/StoreDiscount';
+import HeroContent from './pages/HeroContent';
 
 function App() {
   const [page, setPage] = useState('dashboard');
@@ -87,6 +88,7 @@ function App() {
         {page === 'accounting' && <Accounting setPage={setPage} admin={admin} />}
         {page === 'admins' && <Admins setPage={setPage} admin={admin} />}
         {page === 'users' && <Users setPage={setPage} admin={admin} />}
+        {page === 'hero' && <HeroContent setPage={setPage} admin={admin} />}
         {page === 'storeDiscount' && <StoreDiscount setPage={setPage} admin={admin} />}
         {page === 'chats' && <Chats setPage={setPage} admin={admin} />}
       </AdminLayout>
