@@ -19,6 +19,15 @@ const emptyModel = () => ({
   Description: ''
 });
 
+const statusMeta = (product) => {
+  const qty = Number(product?.QTY ?? 0);
+  const minQty = Number(product?.minQty ?? 0);
+  const status = product?.stockStatus || (qty <= 0 ? 'out_of_stock' : (qty <= (minQty || 3) ? 'low_stock' : 'in_stock'));
+  if (status === 'out_of_stock') return { label: 'نفدت الكمية', className: 'badge bg-danger' };
+  if (status === 'low_stock') return { label: 'كمية محدودة', className: 'badge bg-warning text-dark' };
+  return { label: 'متوفر', className: 'badge bg-success' };
+};
+
 const Products = () => {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +36,7 @@ const Products = () => {
   const [page, setPage] = useState(1);
   const limit = 20;
   const [total, setTotal] = useState(0);
-  const [filterOptions, setFilterOptions] = useState({ categories: [], subcategories: [] });
+  const [filterOptions, setFilterOptions] = useState({ categories: [], subcategories: [], materials: [], seasons: [], styles: [] });
   const [categoryFilter, setCategoryFilter] = useState('');
   const [subcategoryFilter, setSubcategoryFilter] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
@@ -49,7 +58,10 @@ const Products = () => {
       if (res.ok) {
         setFilterOptions({
           categories: res.data?.categories || [],
-          subcategories: res.data?.subcategories || []
+          subcategories: res.data?.subcategories || [],
+          materials: res.data?.materials || [],
+          seasons: res.data?.seasons || [],
+          styles: res.data?.styles || []
         });
       }
     };
@@ -292,7 +304,9 @@ const Products = () => {
             </div>
             {loading && <div>جارٍ التحميل...</div>}
             {!loading && list.length === 0 && <div className="text-muted">لا يوجد منتجات.</div>}
-            {!loading && list.map((p) => (
+            {!loading && list.map((p) => {
+              const meta = statusMeta(p);
+              return (
               <div key={p._id} className="mb-2 p-2" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                 <div className="d-flex">
                   <div style={{ width: 96, height: 96, background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginInlineEnd: 12, border: '1px solid #f0f0f0' }}>
@@ -303,6 +317,7 @@ const Products = () => {
                     <div style={{ fontSize: 12, color: '#666' }}>التكلفة: ج.م {p.cost ?? 0}</div>
                     <div style={{ fontSize: 13, color: '#666' }}>{p.Category}{p.Subcategory ? ` > ${p.Subcategory}` : ''} {p.Material ? ` | ${p.Material}` : ''}</div>
                     <div style={{ marginTop: 6, fontSize: 13 }}>{p.Description}</div>
+                    <div className="mt-2"><span className={meta.className}>{meta.label}</span></div>
                     <div className="mt-2 d-flex gap-2">
                       <button className="btn btn-sm btn-outline-secondary" onClick={() => edit(p)}>تعديل</button>
                       <button className="btn btn-sm btn-outline-danger" onClick={() => remove(p._id)}>حذف</button>
@@ -314,7 +329,7 @@ const Products = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            );})}
 
             <div className="d-flex justify-content-between align-items-center mt-3">
               <div className="text-muted">
