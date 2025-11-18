@@ -6,7 +6,6 @@ import Accounting from './pages/Accounting';
 import Admins from './pages/Admins';
 import Announcements from './pages/Announcements';
 import Dashboard from './pages/Dashboard';
-import InventoryInsights from './pages/InventoryInsights';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Chats from './pages/Chats';
@@ -87,7 +86,6 @@ function App() {
         {page === 'reports' && <Reports setPage={setPage} admin={admin} />}
         {page === 'accounting' && <Accounting setPage={setPage} admin={admin} />}
         {page === 'admins' && <Admins setPage={setPage} admin={admin} />}
-        {page === 'inventory' && <InventoryInsights setPage={setPage} admin={admin} />}
         {page === 'users' && <Users setPage={setPage} admin={admin} />}
         {page === 'storeDiscount' && <StoreDiscount setPage={setPage} admin={admin} />}
         {page === 'chats' && <Chats setPage={setPage} admin={admin} />}

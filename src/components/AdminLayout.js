@@ -210,7 +210,8 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
               <div id="dropdown-primary" role="menu" className={`dropdown ${openGroup === 'primary' ? 'open' : ''}`}>
                 <button role="menuitem" onClick={() => { setPage('dashboard'); setOpenGroup(null); }} style={page==='dashboard' ? activeBtn : btn}>لوحة المتابعة</button>
                 <button role="menuitem" onClick={() => { setPage('orders'); setOpenGroup(null); }} style={page==='orders' ? activeBtn : btn}> <IconOrder /> الطلبات {newCount>0 && <span className="badge">{newCount}</span>}</button>
-                <button role="menuitem" onClick={() => { setPage('chats'); setOpenGroup(null); }} style={page==='chats' ? activeBtn : btn}>دردشة العملاء</button>
+                <button role="menuitem" onClick={() => { setPage('chats'); setOpenGroup(null); }} style={page==='chats' ? activeBtn : btn}>دردشة العملاء</button>
+
                 <button role="menuitem" onClick={() => { setPage('products'); setOpenGroup(null); }} style={page==='products' ? activeBtn : btn}>المنتجات</button>
               </div>
             </div>
@@ -227,7 +228,7 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
                 <IconChevron open={openGroup === 'marketing'} />
               </button>
               <div id="dropdown-marketing" role="menu" className={`dropdown ${openGroup === 'marketing' ? 'open' : ''}`}>
-                <button role="menuitem" onClick={() => { setPage('promotions'); setOpenGroup(null); }} style={page==='promotions' ? activeBtn : btn}>العروض</button>
+                <button role="menuitem" onClick={() => { setPage('promotions'); setOpenGroup(null); }} style={page==='promotions' ? activeBtn : btn}>الكوبونات</button>
                 <button role="menuitem" onClick={() => { setPage('announcements'); setOpenGroup(null); }} style={page==='announcements' ? activeBtn : btn}>الإعلانات</button>
                 <button role="menuitem" onClick={() => { setPage('storeDiscount'); setOpenGroup(null); }} style={page==='storeDiscount' ? activeBtn : btn}>خصم المتجر</button>
                 <button role="menuitem" onClick={() => { setPage('reports'); setOpenGroup(null); }} style={page==='reports' ? activeBtn : btn}>التقارير</button>
@@ -246,7 +247,6 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
                 <IconChevron open={openGroup === 'ops'} />
               </button>
               <div id="dropdown-ops" role="menu" className={`dropdown ${openGroup === 'ops' ? 'open' : ''}`}>
-                <button role="menuitem" onClick={() => { setPage('inventory'); setOpenGroup(null); }} style={page==='inventory' ? activeBtn : btn}>المخزون</button>
                 {(admin && (admin.role === 'manager' || admin.role === 'superadmin')) && (
                   <button role="menuitem" onClick={() => { setPage('accounting'); setOpenGroup(null); }} style={page==='accounting' ? activeBtn : btn}>الحسابات</button>
                 )}
@@ -278,19 +278,19 @@ const AdminLayout = ({ children, page, setPage, onLogout, admin }) => {
           <div className="mobile-section-title">الإدارة اليومية</div>
           <button onClick={() => { setPage('dashboard'); setMobileOpen(false); }}>لوحة المتابعة</button>
           <button onClick={() => { setPage('orders'); setMobileOpen(false); }}>الطلبات {newCount>0 && <span className="badge">{newCount}</span>}</button>
-          <button onClick={() => { setPage('chats'); setMobileOpen(false); }}>دردشة العملاء</button>
+          <button onClick={() => { setPage('chats'); setMobileOpen(false); }}>دردشة العملاء</button>
+
           <button onClick={() => { setPage('products'); setMobileOpen(false); }}>المنتجات</button>
         </div>
         <div className="mobile-section">
           <div className="mobile-section-title">التسويق</div>
-          <button onClick={() => { setPage('promotions'); setMobileOpen(false); }}>العروض</button>
+          <button onClick={() => { setPage('promotions'); setMobileOpen(false); }}>الكوبونات</button>
           <button onClick={() => { setPage('announcements'); setMobileOpen(false); }}>الإعلانات</button>
           <button onClick={() => { setPage('storeDiscount'); setMobileOpen(false); }}>خصم المتجر</button>
           <button onClick={() => { setPage('reports'); setMobileOpen(false); }}>التقارير</button>
         </div>
         <div className="mobile-section">
           <div className="mobile-section-title">التشغيل</div>
-          <button onClick={() => { setPage('inventory'); setMobileOpen(false); }}>المخزون</button>
           {(admin && (admin.role === 'manager' || admin.role === 'superadmin')) && (
             <button onClick={() => { setPage('accounting'); setMobileOpen(false); }}>الحسابات</button>
           )}

@@ -94,9 +94,9 @@ const StatCard = ({ title, value, subtitle }) => (
 const Dashboard = ({ setPage }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [stats, setStats] = useState({ products: 0, orders: 0, users: 0, inventory: 0, revenue: 0 });
+  const [stats, setStats] = useState({ products: 0, orders: 0, users: 0, revenue: 0 });
   const [recentOrders, setRecentOrders] = useState([]);
-  const [inventory, setInventory] = useState([]);
+  const [ordersList, setOrdersList] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const load = async () => {
@@ -106,12 +106,11 @@ const Dashboard = ({ setPage }) => {
       api.get('/products'),
       api.get('/orders?page=1&limit=8'),
       api.get('/orders/customers'),
-      api.get('/inventory'),
       api.get('/revenue')
     ]);
 
     const unwrap = (result) => (result.status === 'fulfilled' ? result.value : { ok: false });
-    const [productsRes, ordersRes, customersRes, inventoryRes, revenueRes] = requests.map(unwrap);
+    const [productsRes, ordersRes, customersRes, revenueRes] = requests.map(unwrap);
 
     if (!productsRes.ok && !ordersRes.ok) {
       setError('حصلت مشكلة أثناء تحميل البيانات، حاول لاحقاً.');
@@ -122,26 +121,27 @@ const Dashboard = ({ setPage }) => {
     const users = customersRes.ok
       ? (Array.isArray(customersRes.data) ? customersRes.data : customersRes.data?.customers || [])
       : [];
-    const stock = inventoryRes.ok ? (Array.isArray(inventoryRes.data) ? inventoryRes.data : inventoryRes.data?.items || []) : [];
     const revenue = revenueRes.ok ? (revenueRes.data?.total ?? revenueRes.data?.revenue ?? 0) : orders.reduce((sum, o) => sum + Number(o.totalPrice || 0), 0);
 
     setStats({
       products: products.length,
       orders: orders.length,
       users: users.length,
-      inventory: stock.length || products.length,
       revenue
     });
     setRecentOrders(orders.slice(0, 6));
-    setInventory(stock.length ? stock : products);
+    setOrdersList(orders);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  const lowStock = useMemo(() => {
-    return (inventory || []).filter((p) => Number(p.QTY ?? p.currentQty ?? 0) <= 5).slice(0, 6);
-  }, [inventory]);
+  const attentionOrders = useMemo(() => {
+    return (ordersList || [])
+      .filter((o) => ['pending', 'processing'].includes(o.status))
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(0, 6);
+  }, [ordersList]);
 
   return (
     <div dir="rtl">
@@ -194,17 +194,17 @@ const Dashboard = ({ setPage }) => {
           <div className="card h-100">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="mb-0">منتجات قليلة المخزون</h5>
-                <button className="btn btn-sm btn-link" onClick={() => setPage('inventory')}>إدارة المخزون</button>
+                <h5 className="mb-0">طلبات تحتاج متابعة</h5>
+                <button className="btn btn-sm btn-link" onClick={() => setPage('orders')}>متابعة الطلبات</button>
               </div>
-              {lowStock.length === 0 && <div className="text-muted text-center py-4">لا يوجد منتجات على وشك النفاد.</div>}
-              {lowStock.map((p) => (
-                <div key={p._id || p.product} className="d-flex justify-content-between align-items-center border-bottom py-2">
+              {attentionOrders.length === 0 && <div className="text-muted text-center py-4">كل الطلبات محدثة حالياً.</div>}
+              {attentionOrders.map((order) => (
+                <div key={order._id} className="d-flex justify-content-between align-items-center border-bottom py-2">
                   <div>
-                    <div style={{ fontWeight: 600 }}>{p.Name || p.name}</div>
-                    <div className="text-muted small">الكود: {p.Number || p.number || '-'}</div>
+                    <div style={{ fontWeight: 600 }}>#{order.orderNumber || order._id.slice(-6)}</div>
+                    <div className="text-muted small">{order.userDetails?.username || 'ضيف'} • {new Date(order.createdAt).toLocaleString('ar-EG')}</div>
                   </div>
-                  <div className="badge bg-warning text-dark">المتوفر: {p.QTY ?? p.currentQty ?? 0}</div>
+                  <div className="badge bg-warning text-dark">{statusLabel(order.status)}</div>
                 </div>
               ))}
             </div>
