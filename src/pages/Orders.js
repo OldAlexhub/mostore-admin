@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
+import getPrimaryImage from '../utils/getPrimaryImage';
 
 const STATUS_OPTIONS = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
@@ -150,7 +151,7 @@ const OrderModal = ({ order, onClose, onChangeStatus, onReload }) => {
             {items.map((it) => {
               const itemPrice = Number(it.price ?? it.productDetails?.Sell ?? it.productDetails?.sell ?? 0);
               const itemName = it.Name || it.productName || it.productDetails?.Name || it.productDetails?.name || '-';
-              let img = it.imageUrl || it.productDetails?.imageUrl || it.product?.imageUrl || it.product?.image || it.product?.images?.[0] || '';
+              let img = getPrimaryImage(it, it.productDetails);
               // if path looks relative (starts with '/') and isn't an absolute URL, prefix with server origin
               if (img && typeof img === 'string' && img.startsWith('/') && !img.startsWith('//')) {
                 img = `${serverOrigin}${img}`;

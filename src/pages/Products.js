@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
+import getPrimaryImage from '../utils/getPrimaryImage';
 
 const emptyModel = () => ({
   Number: '',
@@ -322,11 +323,12 @@ const Products = () => {
             {!loading && list.length === 0 && <div className="text-muted">لا يوجد منتجات.</div>}
             {!loading && list.map((p) => {
               const meta = statusMeta(p);
+              const thumb = getPrimaryImage(p);
               return (
               <div key={p._id} className="mb-2 p-2" style={{ border: '1px solid #eee', borderRadius: 6 }}>
                 <div className="d-flex">
                   <div style={{ width: 96, height: 96, background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginInlineEnd: 12, border: '1px solid #f0f0f0' }}>
-                    {p.imageUrl ? <img src={p.imageUrl} alt={p.Name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <div style={{ fontSize: 11, color: '#999' }}>لا توجد صورة</div>}
+                    {thumb ? <img src={thumb} alt={p.Name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <div style={{ fontSize: 11, color: '#999' }}>لا توجد صورة</div>}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{p.Name} {p.Number ? <span className="text-muted" style={{ fontWeight: 400, marginInlineStart:8 }}>#{p.Number}</span> : null} <span className="text-muted" style={{ fontWeight: 400 }}>- ج.م {p.Sell}</span></div>

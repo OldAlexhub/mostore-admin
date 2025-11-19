@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import api from '../api';
 import { useToast } from '../components/Toaster';
 import newMessageSound from '../media/newmessage.mp3';
+import getPrimaryImage from '../utils/getPrimaryImage';
 
 const resolveSocketUrl = () => {
   const explicit = (process.env.REACT_APP_SOCKET_URL && process.env.REACT_APP_SOCKET_URL.trim()) || '';
@@ -24,6 +25,31 @@ const resolveSocketUrl = () => {
 
 const SOCKET_URL = resolveSocketUrl();
 
+const API_BASE = (process.env.REACT_APP_API_BASE && process.env.REACT_APP_API_BASE.trim()) || '/api';
+
+const deriveServerOrigin = () => {
+  try {
+    if (API_BASE.startsWith('http')) {
+      const url = new URL(API_BASE);
+      return url.origin;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return (process.env.REACT_APP_API_HOST && process.env.REACT_APP_API_HOST.trim())
+    || (typeof window !== 'undefined' ? window.location.origin : '');
+};
+
+const SERVER_ORIGIN = deriveServerOrigin();
+
+const withServerOrigin = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  if (value.startsWith('/') && !value.startsWith('//')) {
+    return `${SERVER_ORIGIN}${value}`;
+  }
+  return value;
+};
+
 const formatTime = (value) => {
   if (!value) return '';
   try {
@@ -37,6 +63,26 @@ const formatTime = (value) => {
     return '';
   }
 };
+
+const formatCurrency = (value) => {
+  try {
+    return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(value || 0);
+  } catch {
+    return `?.? ${Number(value || 0).toFixed(0)}`;
+  }
+};
+
+const ORDER_STATUS_LABELS = {
+  pending: 'قيد المراجعة',
+  paid: 'مدفوع',
+  processing: 'قيد التجهيز',
+  shipped: 'تم الشحن',
+  delivered: 'تم التوصيل',
+  cancelled: 'ملغي',
+  refunded: 'مرتجع'
+};
+
+const orderStatusLabel = (status) => ORDER_STATUS_LABELS[status] || status;
 
 const Chats = () => {
   const toast = useToast();
@@ -63,6 +109,13 @@ const Chats = () => {
   const [soundEnabled, setSoundEnabled] = useState(initialSoundPreference);
   const soundEnabledRef = useRef(initialSoundPreference);
   const audioRef = useRef(null);
+  const [orderPreview, setOrderPreview] = useState(null);
+  const [orderPreviewLoading, setOrderPreviewLoading] = useState(false);
+  const [orderPreviewError, setOrderPreviewError] = useState('');
+  const [quickPhone, setQuickPhone] = useState('');
+  const [quickOrders, setQuickOrders] = useState([]);
+  const [quickSearchLoading, setQuickSearchLoading] = useState(false);
+  const [quickSearchError, setQuickSearchError] = useState('');
 
   useEffect(() => {
     filterRef.current = filter;
@@ -71,6 +124,81 @@ const Chats = () => {
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
   }, [selectedSession]);
+
+  const extractOrderFromResponse = (payload) => {
+    if (!payload) return null;
+    if (payload.order) return payload.order;
+    if (Array.isArray(payload.orders)) return payload.orders[0] || null;
+    if (payload._id) return payload;
+    if (Array.isArray(payload)) return payload[0] || null;
+    return null;
+  };
+
+  const loadOrderPreview = useCallback(async (session) => {
+    if (!session || (!session.orderId && !session.orderNumber)) {
+      setOrderPreview(null);
+      setOrderPreviewError('');
+      setOrderPreviewLoading(false);
+      return;
+    }
+    setOrderPreviewLoading(true);
+    setOrderPreviewError('');
+    let res;
+    if (session.orderId) {
+      res = await api.get(`/orders/${session.orderId}`);
+    } else if (session.orderNumber) {
+      res = await api.get(`/orders?q=${encodeURIComponent(session.orderNumber)}&limit=1`);
+    }
+    if (res?.ok) {
+      const order = extractOrderFromResponse(res.data);
+      if (order) {
+        setOrderPreview(order);
+        setOrderPreviewError('');
+      } else {
+        setOrderPreview(null);
+        setOrderPreviewError('لا توجد بيانات لهذا الطلب.');
+      }
+    } else {
+      setOrderPreview(null);
+      setOrderPreviewError(res?.error || 'تعذر تحميل تفاصيل الطلب.');
+    }
+    setOrderPreviewLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadOrderPreview(selectedSession);
+  }, [selectedSession, loadOrderPreview]);
+
+  const handleQuickPhoneChange = (event) => {
+    const next = event.target.value.replace(/[^0-9+]/g, '');
+    setQuickPhone(next);
+    if (!next.trim()) {
+      setQuickOrders([]);
+      setQuickSearchError('');
+    }
+  };
+
+  const handleQuickSearch = async (event) => {
+    event.preventDefault();
+    const normalized = quickPhone.replace(/\D/g, '');
+    if (!normalized) {
+      setQuickSearchError('أدخل رقم الهاتف أولاً');
+      setQuickOrders([]);
+      return;
+    }
+    setQuickSearchLoading(true);
+    setQuickSearchError('');
+    const res = await api.get(`/orders?q=${encodeURIComponent(normalized)}&limit=5`);
+    if (res.ok) {
+      const orders = Array.isArray(res.data?.orders) ? res.data.orders : (Array.isArray(res.data) ? res.data : []);
+      setQuickOrders(orders);
+      if (!orders.length) setQuickSearchError('لا توجد طلبات مطابقة لهذا الرقم.');
+    } else {
+      setQuickOrders([]);
+      setQuickSearchError(res.error || 'تعذر تنفيذ البحث.');
+    }
+    setQuickSearchLoading(false);
+  };
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
@@ -258,7 +386,8 @@ const Chats = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}>
-        <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
           <div style={{ padding: 12, borderBottom: '1px solid #eee', fontWeight: 600 }}>المحادثات</div>
           <div style={{ maxHeight: 520, overflowY: 'auto' }}>
             {filteredSessions.map((session) => {
@@ -296,6 +425,45 @@ const Chats = () => {
             )}
           </div>
         </div>
+        <div style={{ border: '1px solid #eee', borderRadius: 8, background: '#fff' }}>
+            <div style={{ padding: 12, borderBottom: '1px solid #eee', fontWeight: 600 }}>بحث سريع عن الطلبات</div>
+            <form onSubmit={handleQuickSearch} style={{ padding: 12, display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                placeholder="رقم الهاتف"
+                value={quickPhone}
+                onChange={handleQuickPhoneChange}
+                style={{ flex: 1, border: '1px solid #ccc', borderRadius: 6, padding: '6px 10px' }}
+              />
+              <button type="submit" disabled={quickSearchLoading} style={{ padding: '6px 12px' }}>
+                {quickSearchLoading ? 'جارٍ...' : 'بحث'}
+              </button>
+            </form>
+            {quickSearchError && <div style={{ color: '#b42318', fontSize: 13, padding: '0 12px 8px' }}>{quickSearchError}</div>}
+            <div style={{ maxHeight: 220, overflowY: 'auto', padding: '0 12px 12px' }}>
+              {!quickOrders.length && !quickSearchError && (
+                <div style={{ fontSize: 13, color: '#666' }}>ابحث برقم الهاتف لعرض آخر الطلبات المرتبطة به.</div>
+              )}
+              {quickOrders.map((order) => {
+                const firstItem = Array.isArray(order.products) && order.products.length ? order.products[0] : null;
+                const img = withServerOrigin(getPrimaryImage(firstItem, firstItem?.productDetails));
+                return (
+                  <div key={order._id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f3f3f3' }}>
+                    <div style={{ width: 48, height: 48, background: '#fafafa', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {img ? <img src={img} alt={order.orderNumber || order._id} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 11, color: '#999' }}>لا صورة</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600 }}>#{order.orderNumber || order._id?.slice(-6)}</div>
+                      <div style={{ fontSize: 12, color: '#555' }}>{orderStatusLabel(order.status)}</div>
+                      <div style={{ fontSize: 12, color: '#777' }}>{formatCurrency(order.totalPrice)}</div>
+                      <div style={{ fontSize: 11, color: '#999' }}>{order.createdAt ? new Date(order.createdAt).toLocaleString('ar-EG') : ''}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <div style={{ border: '1px solid #eee', borderRadius: 8, background: '#fff', minHeight: 520, display: 'flex', flexDirection: 'column' }}>
           {loadingSession && <div style={{ padding: 16 }}>جاري التحميل...</div>}
@@ -309,6 +477,49 @@ const Chats = () => {
                   {selectedSession.orderNumber ? `طلب #${selectedSession.orderNumber}` : 'استفسار بدون طلب'}
                 </div>
               </div>
+
+              {(selectedSession.orderNumber || orderPreviewLoading || orderPreview || orderPreviewError) && (
+                <div style={{ borderBottom: '1px solid #eee', padding: '12px 16px', background: '#fdfbf5' }}>
+                  {orderPreviewLoading && <div style={{ fontSize: 13, color: '#555' }}>جارٍ تحميل تفاصيل الطلب...</div>}
+                  {!orderPreviewLoading && orderPreview && (
+                    <>
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
+                        <div>#{orderPreview.orderNumber || orderPreview._id?.slice(-6)}</div>
+                        <div>الحالة: <strong>{orderStatusLabel(orderPreview.status)}</strong></div>
+                        <div>الإجمالي: <strong>{formatCurrency(orderPreview.totalPrice)}</strong></div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                        {Array.isArray(orderPreview.products) && orderPreview.products.length ? (
+                          orderPreview.products.slice(0, 3).map((item, idx) => {
+                            const previewImg = withServerOrigin(getPrimaryImage(item, item.productDetails));
+                            const qty = item.quantity || item.qty || 1;
+                            const name = item.productDetails?.Name || item.Name || `منتج ${idx + 1}`;
+                            return (
+                              <div key={`${item.product || idx}`} style={{ flex: '1 1 30%', minWidth: 140, border: '1px solid #eee', borderRadius: 8, padding: 6, display: 'flex', gap: 8, alignItems: 'center', background: '#fff' }}>
+                                <div style={{ width: 44, height: 44, background: '#fafafa', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {previewImg ? <img src={previewImg} alt={name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 11, color: '#999' }}>لا صورة</span>}
+                                </div>
+                                <div style={{ fontSize: 12 }}>
+                                  <div style={{ fontWeight: 600 }} className="text-truncate">{name}</div>
+                                  <div style={{ color: '#555' }}>x{qty}</div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div style={{ fontSize: 12, color: '#777' }}>لا توجد منتجات لهذا الطلب.</div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {!orderPreviewLoading && !orderPreview && orderPreviewError && (
+                    <div style={{ fontSize: 12, color: '#b42318' }}>{orderPreviewError}</div>
+                  )}
+                  {!orderPreviewLoading && !orderPreview && !orderPreviewError && selectedSession.orderNumber && (
+                    <div style={{ fontSize: 12, color: '#777' }}>لا توجد بيانات معروضة لهذا الطلب حتى الآن.</div>
+                  )}
+                </div>
+              )}
 
               <div
                 ref={messageContainerRef}
