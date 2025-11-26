@@ -191,7 +191,56 @@ const Chats = () => {
     const res = await api.get(`/orders?q=${encodeURIComponent(normalized)}&limit=5`);
     if (res.ok) {
       const orders = Array.isArray(res.data?.orders) ? res.data.orders : (Array.isArray(res.data) ? res.data : []);
-      setQuickOrders(orders);
+
+      // For entries where the first product lacks details, attempt to fetch the product record
+      const enriched = await Promise.all(orders.map(async (order) => {
+        try {
+          const firstItem = Array.isArray(order.products) && order.products.length ? order.products[0] : null;
+          // if we already have productDetails or an image, keep as-is
+          if (!firstItem) return order;
+          const haveImage = !!getPrimaryImage(firstItem, firstItem?.productDetails);
+          const haveName = !!(firstItem?.productDetails?.Name || firstItem?.Name || firstItem?.productName);
+          if (haveImage && haveName) return order;
+
+          // if the product field is present and looks like an objectId, fetch product details
+          const pid = firstItem.product || firstItem.productId || firstItem._id;
+          // Prefer fetching by product ObjectId when possible
+          if (pid && /^[0-9a-fA-F]{24}$/.test(String(pid))) {
+            const prodRes = await api.get(`/products/${encodeURIComponent(pid)}`);
+            if (prodRes.ok && prodRes.data) {
+              // put resolved productDetails into first product (non-destructive)
+              const first = { ...(firstItem || {}), productDetails: { ...(firstItem?.productDetails || {}), ...(prodRes.data || {}) } };
+              const newOrder = { ...order };
+              newOrder.products = Array.isArray(order.products) ? [...order.products] : [];
+              newOrder.products[0] = first;
+              return newOrder;
+            }
+          }
+
+          // Fallback: try searching by product name (best-effort) to find a product record with an image
+          const candidateName = firstItem?.productDetails?.Name || firstItem?.Name || firstItem?.productName;
+          if (candidateName && candidateName.length > 2) {
+            try {
+              const searchRes = await api.get(`/products/search?q=${encodeURIComponent(candidateName)}&limit=1`);
+              if (searchRes.ok && Array.isArray(searchRes.data) && searchRes.data.length > 0) {
+                const found = searchRes.data[0];
+                const first = { ...(firstItem || {}), productDetails: { ...(firstItem?.productDetails || {}), ...(found || {}) } };
+                const newOrder = { ...order };
+                newOrder.products = Array.isArray(order.products) ? [...order.products] : [];
+                newOrder.products[0] = first;
+                return newOrder;
+              }
+            } catch (e) {
+              // ignore fallback errors
+            }
+          }
+          return order;
+        } catch (e) {
+          return order;
+        }
+      }));
+
+      setQuickOrders(enriched);
       if (!orders.length) setQuickSearchError('لا توجد طلبات مطابقة لهذا الرقم.');
     } else {
       setQuickOrders([]);
@@ -320,7 +369,7 @@ const Chats = () => {
       toast(res.error || 'تعذر تحميل المحادثات');
     }
     setLoadingList(false);
-  }, [filter, toast, loadSession]);
+  }, [filter, toast]);
 
   useEffect(() => {
     fetchSessions();
@@ -446,15 +495,24 @@ const Chats = () => {
               )}
               {quickOrders.map((order) => {
                 const firstItem = Array.isArray(order.products) && order.products.length ? order.products[0] : null;
-                const img = withServerOrigin(getPrimaryImage(firstItem, firstItem?.productDetails));
+                const previewImg = withServerOrigin(order.firstProductImage || getPrimaryImage(firstItem, firstItem?.productDetails));
+                const productName = firstItem?.productDetails?.Name || firstItem?.Name || firstItem?.productName || '';
                 return (
-                  <div key={order._id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f3f3f3' }}>
-                    <div style={{ width: 48, height: 48, background: '#fafafa', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {img ? <img src={img} alt={order.orderNumber || order._id} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 11, color: '#999' }}>لا صورة</span>}
+                  <div key={order._id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f3f3f3', alignItems: 'center' }}>
+                    <div style={{ width: 56, height: 56, background: '#fafafa', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {previewImg ? (
+                        <img src={previewImg} alt={productName || order.orderNumber || order._id} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#999' }}>لا صورة</span>
+                      )}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600 }}>#{order.orderNumber || order._id?.slice(-6)}</div>
-                      <div style={{ fontSize: 12, color: '#555' }}>{orderStatusLabel(order.status)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {productName ? (
+                        <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{productName}</div>
+                      ) : (
+                        <div style={{ fontWeight: 600 }}>#{order.orderNumber || order._id?.slice(-6)}</div>
+                      )}
+                      <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{orderStatusLabel(order.status)}</div>
                       <div style={{ fontSize: 12, color: '#777' }}>{formatCurrency(order.totalPrice)}</div>
                       <div style={{ fontSize: 11, color: '#999' }}>{order.createdAt ? new Date(order.createdAt).toLocaleString('ar-EG') : ''}</div>
                     </div>

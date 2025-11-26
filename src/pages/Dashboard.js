@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import getPrimaryImage from '../utils/getPrimaryImage';
 
 const statusLabel = (status) => {
   const labels = {
@@ -65,16 +66,26 @@ const OrderPreviewModal = ({ order, onClose }) => {
         <div className="mt-3">
           <h6>المنتجات</h6>
           {items.length === 0 && <div className="text-muted">لا يوجد منتجات داخل الطلب.</div>}
-          {items.map((p, idx) => (
-            <div key={`${p.product}-${idx}`} className="d-flex align-items-center border-bottom py-2">
-              <div style={{ width: 56, height: 56, borderRadius: 8, background: '#f4f4f4', marginInlineStart: 12 }} />
-              <div className="flex-grow-1">
-                <div style={{ fontWeight: 600 }}>{p.productDetails?.Name || 'منتج'}</div>
-                <div className="text-muted small">الكمية: {p.quantity} × {currency(p.productDetails?.Sell)}</div>
+          {items.map((p, idx) => {
+            const preview = getPrimaryImage(p, p.productDetails);
+            const name = p.productDetails?.Name || p.Name || p.productName || 'منتج';
+            return (
+              <div key={`${p.product}-${idx}`} className="d-flex align-items-center border-bottom py-2">
+                <div style={{ width: 56, height: 56, borderRadius: 8, background: '#f4f4f4', marginInlineStart: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {preview ? (
+                    <img src={preview} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ fontSize: 11, color: '#999' }}>لا صورة</div>
+                  )}
+                </div>
+                <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+                  <div className="text-muted small">الكمية: {p.quantity} × {currency(p.productDetails?.Sell)}</div>
+                </div>
+                <div style={{ width: 120, textAlign: 'left' }}>{currency((p.productDetails?.Sell || 0) * (p.quantity || 1))}</div>
               </div>
-              <div style={{ width: 120, textAlign: 'left' }}>{currency((p.productDetails?.Sell || 0) * (p.quantity || 1))}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

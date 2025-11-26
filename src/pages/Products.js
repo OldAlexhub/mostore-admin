@@ -21,6 +21,41 @@ const emptyModel = () => ({
   imageGalleryText: ''
 });
 
+const GalleryPreview = ({ model }) => {
+  if (!model) return null;
+  const explicitPrimary = (model.imageUrl || '').toString().trim();
+  const explicitSecondary = (model.secondaryImageUrl || '').toString().trim();
+  const galleryLines = (model.imageGalleryText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const combined = [];
+  const seen = new Set();
+  const pushUnique = (u) => {
+    if (!u) return;
+    const s = u.toString().trim();
+    if (!s) return;
+    if (seen.has(s)) return;
+    seen.add(s);
+    combined.push(s);
+  };
+  pushUnique(explicitPrimary);
+  pushUnique(explicitSecondary);
+  galleryLines.forEach(pushUnique);
+  const MAX_IMAGES = 20;
+  const list = combined.slice(0, MAX_IMAGES);
+  if (list.length === 0) return null;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>معاينة الصور (عرض {list.length} من {MAX_IMAGES})</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {list.map((url, idx) => (
+          <div key={`${url}-${idx}`} style={{ width: 72, height: 72, borderRadius: 6, overflow: 'hidden', border: '1px solid #eee', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={url} alt={`preview-${idx+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const statusMeta = (product) => {
   const qty = Number(product?.QTY ?? 0);
   const minQty = Number(product?.minQty ?? 0);
@@ -128,14 +163,38 @@ const Products = () => {
     if (!model.Name || !String(model.Name).trim()) return toast('اسم المنتج مطلوب', { type: 'error' });
     if (model.Sell === '' || model.Sell === null || isNaN(Number(model.Sell))) return toast('سعر البيع مطلوب', { type: 'error' });
     if (model.cost === '' || model.cost === null || isNaN(Number(model.cost))) return toast('التكلفة مطلوبة', { type: 'error' });
-    const gallery = (model.imageGalleryText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    // build combined list of images (primary, secondary, then gallery lines)
+    const explicitPrimary = (model.imageUrl || '').toString().trim();
+    const explicitSecondary = (model.secondaryImageUrl || '').toString().trim();
+    const galleryLines = (model.imageGalleryText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const combined = [];
+    const seen = new Set();
+    const pushUnique = (u) => {
+      if (!u) return;
+      const s = u.toString().trim();
+      if (!s) return;
+      if (seen.has(s)) return;
+      seen.add(s);
+      combined.push(s);
+    };
+    pushUnique(explicitPrimary);
+    pushUnique(explicitSecondary);
+    galleryLines.forEach(pushUnique);
+
+    // apply max total images of 20
+    const MAX_IMAGES = 20;
+    const limited = combined.slice(0, MAX_IMAGES);
+
     const payload = {
       ...model,
       Sell: Number(model.Sell),
       QTY: Number(model.QTY),
       cost: Number(model.cost || 0),
       minQty: Number(model.minQty || 0),
-      imageGallery: gallery
+      // keep first item as imageUrl, second as secondaryImageUrl, rest as imageGallery
+      imageUrl: limited[0] || '',
+      secondaryImageUrl: limited[1] || '',
+      imageGallery: limited.slice(2)
     };
     delete payload.imageGalleryText;
     if (model.Number && String(model.Number).trim() !== '') payload.Number = Number(model.Number);
@@ -260,6 +319,9 @@ const Products = () => {
                 placeholder="https://ibb.co/..."
               />
               <small className="text-muted">يمكنك لصق روابط Imgbb (viewer) أو أي رابط صورة مباشر، كل رابط في سطر مستقل.</small>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>حد أقصى 20 رابطًا (يشمل الرابط الرئيسي والثانوي).</div>
+              {/** gallery preview (show up to 20 combined images including imageUrl & secondary) */}
+              <GalleryPreview model={model} />
             </div>
             <div className="mb-2"><label className="form-label">الوصف</label><textarea className="form-control" rows={3} value={model.Description} onChange={e => setModel(m => ({ ...m, Description: e.target.value }))} /></div>
 
