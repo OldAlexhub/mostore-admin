@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
-import getPrimaryImage from '../utils/getPrimaryImage';
+import getPrimaryImage, { buildImageProxyUrl, normalizeImageUrl } from '../utils/getPrimaryImage';
+
+const MAX_IMAGES = 20;
 
 const emptyModel = () => ({
   Number: '',
@@ -48,10 +50,59 @@ const GalleryPreview = ({ model }) => {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {list.map((url, idx) => (
           <div key={`${url}-${idx}`} style={{ width: 72, height: 72, borderRadius: 6, overflow: 'hidden', border: '1px solid #eee', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src={url} alt={`preview-${idx+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <ImgPreview src={url} alt={`preview-${idx + 1}`} size={72} />
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+const ImgPreview = ({ src, alt, size = 160 }) => {
+  const [failed, setFailed] = useState(false);
+  const [diag, setDiag] = useState(null);
+  const normalized = normalizeImageUrl(src || '');
+  // if this is a Drive URL, route it through our image-proxy to avoid client embed issues
+  const isDrive = /drive\.google\.com|drive\.usercontent\.googleapis\.com|drive\.usercontent\.google\.com|drive\.usercontent/.test(normalized);
+  const previewSrc = isDrive ? buildImageProxyUrl(normalized) : normalized;
+  // Diagnostic: log and try fetching the image to see browser behavior
+  useEffect(() => {
+    if (!normalized) return;
+    console.debug('[ImgPreview] normalized URL ->', normalized);
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(normalized, { method: 'GET', mode: 'cors' });
+        if (!mounted) return;
+        setDiag({ ok: res.ok, status: res.status, type: res.headers.get('content-type') });
+      } catch (err) {
+        if (!mounted) return;
+        setDiag({ error: err.message });
+      }
+    })();
+    return () => { mounted = false; };
+  }, [normalized]);
+  if (!src) return null;
+  return (
+    <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {!failed ? (
+        <img
+          src={previewSrc}
+          alt={alt}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div style={{ textAlign: 'center', fontSize: 11 }}>
+          <div>تعذر تحميل الصورة</div>
+          <a href={normalized} target="_blank" rel="noreferrer">فتح في نافذة جديدة</a>
+        </div>
+      )}
+      {diag && (
+        <div style={{ position: 'absolute', bottom: 2, left: 2, fontSize: 10, color: '#666' }}>
+          {diag.error ? `fetch error: ${diag.error}` : `status: ${diag.status} type: ${diag.type}`}
+        </div>
+      )}
     </div>
   );
 };
@@ -159,6 +210,21 @@ const Products = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, subcategoryFilter, stockFilter, searchApplied]);
 
+  const limitGalleryInput = (rawText, primaryCount = 0) => {
+    const allowed = Math.max(0, MAX_IMAGES - primaryCount);
+    const seen = new Set();
+    const lines = (rawText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const unique = [];
+    for (const line of lines) {
+      const norm = normalizeImageUrl(line);
+      if (!norm || seen.has(norm)) continue;
+      seen.add(norm);
+      unique.push(norm);
+      if (unique.length >= allowed) break;
+    }
+    return unique;
+  };
+
   const save = async () => {
     if (!model.Name || !String(model.Name).trim()) return toast('اسم المنتج مطلوب', { type: 'error' });
     if (model.Sell === '' || model.Sell === null || isNaN(Number(model.Sell))) return toast('سعر البيع مطلوب', { type: 'error' });
@@ -182,7 +248,6 @@ const Products = () => {
     galleryLines.forEach(pushUnique);
 
     // apply max total images of 20
-    const MAX_IMAGES = 20;
     const limited = combined.slice(0, MAX_IMAGES);
 
     const payload = {
@@ -215,6 +280,50 @@ const Products = () => {
       setPage(1);
       load(1);
     } else toast(res.error || 'تعذر الإنشاء', { type: 'error' });
+  };
+
+  const normalizeImages = async () => {
+    if (!editing) return toast('اختر منتجًا ثم اضغط تطبيع الصور', { type: 'error' });
+    try {
+      // Build combined list same as save but only send image fields so server will normalize them
+      const explicitPrimary = (model.imageUrl || '').toString().trim();
+      const explicitSecondary = (model.secondaryImageUrl || '').toString().trim();
+      const galleryLines = (model.imageGalleryText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const combined = [];
+      const seen = new Set();
+      const pushUnique = (u) => {
+        if (!u) return;
+        const s = u.toString().trim();
+        if (!s) return;
+        if (seen.has(s)) return;
+        seen.add(s);
+        combined.push(s);
+      };
+      pushUnique(explicitPrimary);
+      pushUnique(explicitSecondary);
+      galleryLines.forEach(pushUnique);
+      const MAX_IMAGES = 20;
+      const limited = combined.slice(0, MAX_IMAGES);
+
+      const payload = {
+        imageUrl: limited[0] || '',
+        secondaryImageUrl: limited[1] || '',
+        imageGallery: limited.slice(2)
+      };
+
+      const res = await api.put(`/products/${editing}`, payload);
+      if (res.ok) {
+        toast('تم تطبيع وحفظ روابط الصور لهذا المنتج', { type: 'success' });
+        // update model and refresh list
+        setModel(emptyModel());
+        setEditing(null);
+        load(1);
+      } else {
+        toast(res.error || 'فشل تطبيع الصور', { type: 'error' });
+      }
+    } catch (err) {
+      toast(err.message || 'فشل تطبيع الصور', { type: 'error' });
+    }
   };
 
   const edit = (product) => {
@@ -297,16 +406,36 @@ const Products = () => {
             <div className="mb-2"><label className="form-label">الستايل</label><input className="form-control" value={model.Style} onChange={e => setModel(m => ({ ...m, Style: e.target.value }))} /></div>
             <div className="mb-2"><label className="form-label">الكمية المتاحة</label><input className="form-control" type="number" value={model.QTY} onChange={e => setModel(m => ({ ...m, QTY: e.target.value }))} /></div>
             <div className="mb-2"><label className="form-label">حد التنبيه</label><input className="form-control" type="number" value={model.minQty} onChange={e => setModel(m => ({ ...m, minQty: e.target.value }))} /></div>
-            <div className="mb-2"><label className="form-label">رابط الصورة</label><input className="form-control" value={model.imageUrl} onChange={e => setModel(m => ({ ...m, imageUrl: e.target.value }))} /></div>
+            <div className="mb-2">
+              <label className="form-label">رابط الصورة</label>
+              <input
+                className="form-control"
+                value={model.imageUrl}
+                onChange={e => setModel(m => ({ ...m, imageUrl: e.target.value }))}
+                onBlur={e => setModel(m => ({ ...m, imageUrl: normalizeImageUrl(e.target.value) }))}
+              />
+              <small className="text-muted">يمكنك لصق رابط Google Drive (viewer أو share) أو أي رابط صورة مباشر، سيتم تحويله تلقائيًا.</small>
+            </div>
             {model.imageUrl && (
               <div className="mb-2">
-                <img src={model.imageUrl} alt="preview" style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', border: '1px solid #eee' }} />
+                <ImgPreview src={model.imageUrl} alt="preview" size={160} />
+                <div style={{ fontSize: 11, color: '#666', marginTop: 6 }}>URL: <a href={normalizeImageUrl(model.imageUrl)} target="_blank" rel="noreferrer">{normalizeImageUrl(model.imageUrl)}</a></div>
               </div>
             )}
-            <div className="mb-2"><label className="form-label">رابط صورة إضافية</label><input className="form-control" value={model.secondaryImageUrl} onChange={e => setModel(m => ({ ...m, secondaryImageUrl: e.target.value }))} /></div>
+            <div className="mb-2">
+              <label className="form-label">رابط صورة إضافية</label>
+              <input
+                className="form-control"
+                value={model.secondaryImageUrl}
+                onChange={e => setModel(m => ({ ...m, secondaryImageUrl: e.target.value }))}
+                onBlur={e => setModel(m => ({ ...m, secondaryImageUrl: normalizeImageUrl(e.target.value) }))}
+              />
+              <small className="text-muted">يمكنك لصق رابط Google Drive (viewer أو share) أو أي رابط صورة مباشر، سيتم تحويله تلقائيًا.</small>
+            </div>
             {model.secondaryImageUrl && (
               <div className="mb-2">
-                <img src={model.secondaryImageUrl} alt="preview-2" style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', border: '1px solid #eee' }} />
+                <ImgPreview src={model.secondaryImageUrl} alt="preview-2" size={160} />
+                <div style={{ fontSize: 11, color: '#666', marginTop: 6 }}>URL: <a href={normalizeImageUrl(model.secondaryImageUrl)} target="_blank" rel="noreferrer">{normalizeImageUrl(model.secondaryImageUrl)}</a></div>
               </div>
             )}
             <div className="mb-2">
@@ -316,10 +445,33 @@ const Products = () => {
                 rows={3}
                 value={model.imageGalleryText}
                 onChange={e => setModel(m => ({ ...m, imageGalleryText: e.target.value }))}
-                placeholder="https://ibb.co/..."
+                onBlur={e => {
+                  setModel(m => {
+                    const primarySet = new Set();
+                    const add = (v) => { const norm = normalizeImageUrl(v || ''); if (norm) primarySet.add(norm); };
+                    add(m.imageUrl);
+                    add(m.secondaryImageUrl);
+                    const limited = limitGalleryInput(e.target.value, primarySet.size);
+                    return { ...m, imageGalleryText: limited.join('\n') };
+                  });
+                }}
+                placeholder="https://drive.google.com/file/d/FILEID/view?usp=sharing"
               />
-              <small className="text-muted">يمكنك لصق روابط Imgbb (viewer) أو أي رابط صورة مباشر، كل رابط في سطر مستقل.</small>
-              <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>حد أقصى 20 رابطًا (يشمل الرابط الرئيسي والثانوي).</div>
+              {(() => {
+                const primarySet = new Set();
+                const add = (v) => { const norm = normalizeImageUrl(v || ''); if (norm) primarySet.add(norm); };
+                add(model.imageUrl);
+                add(model.secondaryImageUrl);
+                const galleryList = limitGalleryInput(model.imageGalleryText, primarySet.size);
+                const used = primarySet.size + galleryList.length;
+                const remaining = Math.max(0, MAX_IMAGES - used);
+                return (
+                  <>
+                    <small className="text-muted">أضف الرابط واضغط Enter لإضافة التالي. يتم قبول روابط Google Drive (viewer/share) أو أي رابط صورة مباشر.</small>
+                    <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>المتاح: {remaining} من {MAX_IMAGES} (يشمل الرئيسي والثانوي).</div>
+                  </>
+                );
+              })()}
               {/** gallery preview (show up to 20 combined images including imageUrl & secondary) */}
               <GalleryPreview model={model} />
             </div>
@@ -327,6 +479,7 @@ const Products = () => {
 
             <div className="d-flex gap-2">
               <button className="btn btn-primary" onClick={save}>{editing ? 'حفظ التعديلات' : 'إضافة المنتج'}</button>
+              {editing && <button className="btn btn-outline-secondary" onClick={normalizeImages}>تطبيع الصور</button>}
               {editing && <button className="btn btn-secondary" onClick={() => { setEditing(null); setModel(emptyModel()); }}>إلغاء</button>}
             </div>
           </div>

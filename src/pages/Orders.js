@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import { useToast } from '../components/Toaster';
-import getPrimaryImage from '../utils/getPrimaryImage';
+import getPrimaryImage, { buildImageProxyUrl } from '../utils/getPrimaryImage';
 
 const STATUS_OPTIONS = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
@@ -65,7 +65,16 @@ const OrderModal = ({ order, onClose, onChangeStatus, onReload }) => {
     return (process.env.REACT_APP_API_HOST && process.env.REACT_APP_API_HOST.trim()) || 'http://localhost:3000';
   };
 
-  const serverOrigin = deriveServerOrigin();
+  const resolvePreviewImg = (value) => {
+    const origin = deriveServerOrigin();
+    const normalized = origin && value && typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+      ? `${origin}${value}`
+      : value;
+    if (/drive\.google\.com|googleusercontent\.com/i.test(normalized || '')) {
+      return buildImageProxyUrl(normalized);
+    }
+    return normalized;
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1050 }} dir="rtl">
@@ -151,11 +160,7 @@ const OrderModal = ({ order, onClose, onChangeStatus, onReload }) => {
             {items.map((it) => {
               const itemPrice = Number(it.price ?? it.productDetails?.Sell ?? it.productDetails?.sell ?? 0);
               const itemName = it.Name || it.productName || it.productDetails?.Name || it.productDetails?.name || '-';
-              let img = getPrimaryImage(it, it.productDetails);
-              // if path looks relative (starts with '/') and isn't an absolute URL, prefix with server origin
-              if (img && typeof img === 'string' && img.startsWith('/') && !img.startsWith('//')) {
-                img = `${serverOrigin}${img}`;
-              }
+              let img = resolvePreviewImg(getPrimaryImage(it, it.productDetails));
               return (
               <div key={it._id || it.product} className="d-flex align-items-center" style={{ padding: 8, borderBottom: '1px solid #f2f2f2' }}>
                 <div style={{ width: 64, height: 64, marginInlineEnd: 12, background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

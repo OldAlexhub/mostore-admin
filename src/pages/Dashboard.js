@@ -1,6 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
-import getPrimaryImage from '../utils/getPrimaryImage';
+import getPrimaryImage, { buildImageProxyUrl } from '../utils/getPrimaryImage';
+
+const API_BASE = (process.env.REACT_APP_API_BASE && process.env.REACT_APP_API_BASE.trim()) || '/api';
+const deriveServerOrigin = () => {
+  try {
+    if (API_BASE.startsWith('http')) {
+      const u = new URL(API_BASE);
+      return u.origin;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return (process.env.REACT_APP_API_HOST && process.env.REACT_APP_API_HOST.trim()) || 'http://localhost:3000';
+};
+const SERVER_ORIGIN = deriveServerOrigin();
+const resolvePreviewImg = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  const normalized = value.startsWith('/') && !value.startsWith('//') ? `${SERVER_ORIGIN}${value}` : value;
+  if (/drive\.google\.com|googleusercontent\.com/i.test(normalized)) {
+    return buildImageProxyUrl(normalized);
+  }
+  return normalized;
+};
 
 const statusLabel = (status) => {
   const labels = {
@@ -67,7 +89,7 @@ const OrderPreviewModal = ({ order, onClose }) => {
           <h6>المنتجات</h6>
           {items.length === 0 && <div className="text-muted">لا يوجد منتجات داخل الطلب.</div>}
           {items.map((p, idx) => {
-            const preview = getPrimaryImage(p, p.productDetails);
+            const preview = resolvePreviewImg(getPrimaryImage(p, p.productDetails));
             const name = p.productDetails?.Name || p.Name || p.productName || 'منتج';
             return (
               <div key={`${p.product}-${idx}`} className="d-flex align-items-center border-bottom py-2">

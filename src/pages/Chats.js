@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import api from '../api';
 import { useToast } from '../components/Toaster';
 import newMessageSound from '../media/newmessage.mp3';
-import getPrimaryImage from '../utils/getPrimaryImage';
+import getPrimaryImage, { buildImageProxyUrl } from '../utils/getPrimaryImage';
 
 const resolveSocketUrl = () => {
   const explicit = (process.env.REACT_APP_SOCKET_URL && process.env.REACT_APP_SOCKET_URL.trim()) || '';
@@ -48,6 +48,14 @@ const withServerOrigin = (value) => {
     return `${SERVER_ORIGIN}${value}`;
   }
   return value;
+};
+
+const resolvePreviewImg = (value) => {
+  const normalized = withServerOrigin(value);
+  if (/drive\.google\.com|googleusercontent\.com/i.test(normalized || '')) {
+    return buildImageProxyUrl(normalized);
+  }
+  return normalized;
 };
 
 const formatTime = (value) => {
@@ -495,7 +503,8 @@ const Chats = () => {
               )}
               {quickOrders.map((order) => {
                 const firstItem = Array.isArray(order.products) && order.products.length ? order.products[0] : null;
-                const previewImg = withServerOrigin(order.firstProductImage || getPrimaryImage(firstItem, firstItem?.productDetails));
+                const rawImg = order.firstProductImage || getPrimaryImage(firstItem, firstItem?.productDetails);
+                const previewImg = resolvePreviewImg(rawImg);
                 const productName = firstItem?.productDetails?.Name || firstItem?.Name || firstItem?.productName || '';
                 return (
                   <div key={order._id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f3f3f3', alignItems: 'center' }}>
@@ -549,7 +558,7 @@ const Chats = () => {
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                         {Array.isArray(orderPreview.products) && orderPreview.products.length ? (
                           orderPreview.products.slice(0, 3).map((item, idx) => {
-                            const previewImg = withServerOrigin(getPrimaryImage(item, item.productDetails));
+                            const previewImg = resolvePreviewImg(getPrimaryImage(item, item.productDetails));
                             const qty = item.quantity || item.qty || 1;
                             const name = item.productDetails?.Name || item.Name || `منتج ${idx + 1}`;
                             return (
