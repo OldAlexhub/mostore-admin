@@ -282,50 +282,6 @@ const Products = () => {
     } else toast(res.error || 'تعذر الإنشاء', { type: 'error' });
   };
 
-  const normalizeImages = async () => {
-    if (!editing) return toast('اختر منتجًا ثم اضغط تطبيع الصور', { type: 'error' });
-    try {
-      // Build combined list same as save but only send image fields so server will normalize them
-      const explicitPrimary = (model.imageUrl || '').toString().trim();
-      const explicitSecondary = (model.secondaryImageUrl || '').toString().trim();
-      const galleryLines = (model.imageGalleryText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      const combined = [];
-      const seen = new Set();
-      const pushUnique = (u) => {
-        if (!u) return;
-        const s = u.toString().trim();
-        if (!s) return;
-        if (seen.has(s)) return;
-        seen.add(s);
-        combined.push(s);
-      };
-      pushUnique(explicitPrimary);
-      pushUnique(explicitSecondary);
-      galleryLines.forEach(pushUnique);
-      const MAX_IMAGES = 20;
-      const limited = combined.slice(0, MAX_IMAGES);
-
-      const payload = {
-        imageUrl: limited[0] || '',
-        secondaryImageUrl: limited[1] || '',
-        imageGallery: limited.slice(2)
-      };
-
-      const res = await api.put(`/products/${editing}`, payload);
-      if (res.ok) {
-        toast('تم تطبيع وحفظ روابط الصور لهذا المنتج', { type: 'success' });
-        // update model and refresh list
-        setModel(emptyModel());
-        setEditing(null);
-        load(1);
-      } else {
-        toast(res.error || 'فشل تطبيع الصور', { type: 'error' });
-      }
-    } catch (err) {
-      toast(err.message || 'فشل تطبيع الصور', { type: 'error' });
-    }
-  };
-
   const edit = (product) => {
     setEditing(product._id);
     setModel({
@@ -479,7 +435,6 @@ const Products = () => {
 
             <div className="d-flex gap-2">
               <button className="btn btn-primary" onClick={save}>{editing ? 'حفظ التعديلات' : 'إضافة المنتج'}</button>
-              {editing && <button className="btn btn-outline-secondary" onClick={normalizeImages}>تطبيع الصور</button>}
               {editing && <button className="btn btn-secondary" onClick={() => { setEditing(null); setModel(emptyModel()); }}>إلغاء</button>}
             </div>
           </div>
